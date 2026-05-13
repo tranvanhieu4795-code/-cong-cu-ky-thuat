@@ -1,0 +1,1123 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SƠ ĐỒ ĐIỆN NHẤT THỨ</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0c1824;--sb:#08111e;--panel:#0f1f30;--border:#1b3a5a;
+  --accent:#f49c0e;--a2:#0dcdc0;--a3:#4fc3f7;
+  --text:#c8dce8;--dim:#3d6080;--red:#e74c3c;--green:#27ae60;
+  --canvas:#f5f6f7;
+}
+body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--text);display:flex;height:100vh;overflow:hidden;font-size:13px}
+
+/* ─── SIDEBAR ─── */
+#sb{width:228px;min-width:228px;background:var(--sb);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+#sb-head{padding:12px 14px;background:linear-gradient(160deg,#0a2240,#061525);border-bottom:2px solid var(--accent)}
+#sb-head .row{display:flex;align-items:center;gap:10px}
+#sb-head .icon{width:34px;height:34px;background:var(--accent);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+#sb-head h1{font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;color:#fff;line-height:1.2}
+#sb-head p{font-size:9px;color:var(--accent);letter-spacing:1.5px;margin-top:1px}
+#sb-body{flex:1;overflow-y:auto;padding:6px 8px 12px}
+#sb-body::-webkit-scrollbar{width:3px}
+#sb-body::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.sec{font-family:'Rajdhani',sans-serif;font-size:9px;font-weight:700;color:var(--accent);letter-spacing:2px;padding:8px 4px 4px;border-bottom:1px solid var(--border);margin-bottom:5px}
+
+/* Tools */
+.tgrid{display:grid;grid-template-columns:1fr 1fr;gap:3px;margin-bottom:4px}
+.tbtn{background:var(--panel);border:1px solid var(--border);color:var(--text);padding:7px 5px;border-radius:4px;cursor:pointer;text-align:center;font-size:10px;transition:all .15s;display:flex;flex-direction:column;align-items:center;gap:3px;font-family:'Barlow',sans-serif}
+.tbtn .ic{font-size:16px;line-height:1}
+.tbtn:hover{border-color:var(--a2);color:var(--a2)}
+.tbtn.on{background:var(--accent);border-color:var(--accent);color:#0c1824;font-weight:600}
+
+/* Symbol grid */
+.sgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:3px;margin-bottom:4px}
+.sbtn{background:var(--panel);border:1px solid var(--border);border-radius:4px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;transition:all .15s;padding:5px 3px;aspect-ratio:1}
+.sbtn:hover{border-color:var(--a2);background:rgba(13,205,192,.08)}
+.sbtn.on{border-color:var(--accent);background:rgba(244,156,14,.15)}
+.sbtn canvas{width:34px;height:34px;pointer-events:none}
+.sbtn span{font-size:8px;color:var(--dim);text-align:center;font-weight:600;letter-spacing:.4px;line-height:1.2}
+
+/* Data buttons */
+.dbtn{width:100%;padding:7px 10px;margin-bottom:3px;border-radius:4px;border:1px solid var(--border);background:var(--panel);color:var(--text);cursor:pointer;font-size:11px;display:flex;align-items:center;gap:7px;transition:all .15s;font-family:'Barlow',sans-serif}
+.dbtn:hover{border-color:var(--accent);color:var(--accent)}
+.dbtn.pri{background:var(--green);border-color:var(--green);color:#fff;font-weight:600}
+.dbtn.pri:hover{background:#2ecc71}
+
+/* Station list */
+.si{background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:7px 9px;margin-bottom:3px;cursor:pointer;transition:all .15s}
+.si:hover{border-color:var(--a2)}
+.si.on{border-color:var(--accent);background:rgba(244,156,14,.1)}
+.si .nm{font-weight:600;font-size:11px;color:#fff}
+.si .in{font-size:9px;color:var(--dim);margin-top:2px;font-family:'Share Tech Mono',monospace}
+#empty-list{color:var(--dim);font-size:10px;text-align:center;padding:14px 0}
+
+/* ─── MAIN ─── */
+#main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+#toolbar{height:42px;background:var(--panel);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 8px;gap:2px;flex-wrap:nowrap;overflow:hidden}
+.xbtn{background:transparent;border:1px solid transparent;color:var(--text);padding:4px 8px;border-radius:3px;cursor:pointer;font-size:11px;display:flex;align-items:center;gap:4px;transition:all .12s;white-space:nowrap;font-family:'Barlow',sans-serif}
+.xbtn:hover{background:rgba(255,255,255,.07);border-color:var(--border)}
+.xbtn.exp{color:var(--a2)}.xbtn.exp:hover{background:rgba(13,205,192,.1);border-color:var(--a2)}
+.xbtn.pdf{background:var(--red);color:#fff;border-color:var(--red);font-weight:700}.xbtn.pdf:hover{background:#c0392b}
+.xsep{width:1px;height:24px;background:var(--border);margin:0 3px;flex-shrink:0}
+#zoom-box{font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--a2);padding:3px 7px;background:var(--bg);border-radius:3px;min-width:52px;text-align:center}
+#canvas-wrap{flex:1;position:relative;overflow:hidden;background:#6b7a8a;cursor:default}
+#cv{display:block;background:white}
+#status{height:22px;background:var(--bg);border-top:1px solid var(--border);display:flex;align-items:center;padding:0 10px;gap:16px;font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--dim)}
+#status .val{color:var(--a2)}
+#status .hint{margin-left:auto;font-size:9px}
+
+/* ─── PROPS PANEL ─── */
+#pp{width:222px;min-width:222px;background:var(--sb);border-left:1px solid var(--border);display:flex;flex-direction:column}
+#pp-head{padding:11px 13px;background:linear-gradient(160deg,#0a2240,#061525);border-bottom:2px solid var(--a2);font-family:'Rajdhani',sans-serif;font-size:11px;font-weight:700;letter-spacing:2px;color:var(--a2)}
+#pp-body{flex:1;overflow-y:auto;padding:8px 10px 12px}
+#pp-body::-webkit-scrollbar{width:3px}
+#pp-body::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.pg{margin-bottom:9px}
+.pl{font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px}
+.pi{width:100%;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:5px 7px;border-radius:3px;font-size:11px;font-family:'Barlow',sans-serif;outline:none;transition:border-color .15s}
+.pi:focus{border-color:var(--a2)}
+.pi::placeholder{color:var(--dim)}
+.psel{width:100%;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:5px 7px;border-radius:3px;font-size:11px;cursor:pointer;outline:none}
+#no-sel{color:var(--dim);font-size:10px;text-align:center;padding:18px 0}
+#el-props{display:none}
+.prop-btn{width:100%;padding:6px;border-radius:3px;border:1px solid var(--border);background:var(--panel);color:var(--text);cursor:pointer;font-size:11px;margin-top:3px;font-family:'Barlow',sans-serif;transition:all .15s}
+.prop-btn:hover{border-color:var(--a2);color:var(--a2)}
+.prop-btn.danger{color:var(--red)}.prop-btn.danger:hover{border-color:var(--red)}
+
+/* ─── MODAL ─── */
+.mover{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:999;align-items:center;justify-content:center}
+.mover.open{display:flex}
+.modal{background:var(--panel);border:1px solid var(--border);border-radius:8px;width:480px;max-height:82vh;overflow-y:auto}
+.mh{padding:13px 16px;border-bottom:1px solid var(--border);font-family:'Rajdhani',sans-serif;font-weight:700;font-size:14px;color:var(--accent);display:flex;justify-content:space-between;align-items:center}
+.mb{padding:16px}
+.mf{padding:10px 16px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:7px}
+.btn-p{background:var(--accent);border:none;color:#0c1824;padding:7px 16px;border-radius:4px;font-weight:700;cursor:pointer;font-family:'Barlow',sans-serif;font-size:12px}
+.btn-s{background:var(--panel);border:1px solid var(--border);color:var(--text);padding:7px 16px;border-radius:4px;cursor:pointer;font-family:'Barlow',sans-serif;font-size:12px}
+table.info{width:100%;border-collapse:collapse;font-size:11px}
+table.info th{padding:5px 8px;text-align:left;color:var(--accent);border:1px solid var(--border);background:var(--bg)}
+table.info td{padding:5px 8px;border:1px solid var(--border)}
+table.info tr:nth-child(even) td{background:rgba(255,255,255,.03)}
+.mono{font-family:'Share Tech Mono',monospace;color:var(--a3)}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<div id="sb">
+  <div id="sb-head">
+    <div class="row">
+      <div class="icon">⚡</div>
+      <div>
+        <h1>SƠ ĐỒ NHẤT THỨ</h1>
+      </div>
+    </div>
+  </div>
+  <div id="sb-body">
+    <div class="sec">CÔNG CỤ</div>
+    <div class="tgrid">
+      <button class="tbtn on" id="tool-select" data-tool="select" onclick="setTool('select')"><span class="ic">↖</span><span>Chọn</span></button>
+      <button class="tbtn" id="tool-wire" data-tool="wire" onclick="setTool('wire')"><span class="ic">⟵</span><span>Nối dây</span></button>
+      <button class="tbtn" id="tool-text" data-tool="text" onclick="setTool('text')"><span class="ic">T</span><span>Văn bản</span></button>
+      <button class="tbtn" onclick="deleteSelected()"><span class="ic">🗑</span><span>Xóa</span></button>
+    </div>
+
+    <div class="sec">THIẾT BỊ ĐIỆN</div>
+    <div class="sgrid" id="sgrid"></div>
+
+    <div class="sec">DỮ LIỆU & TỆP</div>
+    <input type="file" id="xl-inp" accept=".xlsx,.xls" style="display:none" onchange="loadExcel(this)">
+    <input type="file" id="tb-inp" accept="image/*" style="display:none" onchange="loadTitleImg(this)">
+    <input type="file" id="pr-inp" accept=".json" style="display:none" onchange="loadProject(this)">
+    <button class="dbtn pri" onclick="document.getElementById('xl-inp').click()">📊 NẠP EXCEL → BẢN VẼ</button>
+    <button class="dbtn" onclick="document.getElementById('tb-inp').click()">🖼 Tải khung bản vẽ (ảnh)</button>
+    <button class="dbtn" onclick="document.getElementById('pr-inp').click()">📂 Mở dự án (.json)</button>
+    <button class="dbtn" onclick="showModal('tpl-modal')">📋 Xem mẫu cột Excel</button>
+    <button class="dbtn" onclick="clearTitleImg()">🔄 Đặt lại khung mặc định</button>
+
+    <div class="sec">DANH SÁCH TRẠM</div>
+    <div id="st-list">
+      <div id="empty-list">Chưa có dữ liệu<br>Hãy nạp file Excel</div>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN WORKSPACE -->
+<div id="main">
+  <div id="toolbar">
+    <button class="xbtn" onclick="newDiagram()" title="Tạo mới">🆕 Mới</button>
+    <button class="xbtn" onclick="saveProject()" title="Lưu (Ctrl+S)">💾 Lưu</button>
+    <div class="xsep"></div>
+    <button class="xbtn" onclick="undo()" title="Hoàn tác Ctrl+Z">↩ Undo</button>
+    <button class="xbtn" onclick="redo()" title="Ctrl+Y">↪ Redo</button>
+    <div class="xsep"></div>
+    <button class="xbtn" onclick="zm(1.2)">＋</button>
+    <div id="zoom-box">100%</div>
+    <button class="xbtn" onclick="zm(0.83)">－</button>
+    <button class="xbtn" onclick="fitView()" title="Vừa màn hình">⊞ Fit</button>
+    <button class="xbtn" onclick="toggleGrid()">⊟ Lưới</button>
+    <div class="xsep"></div>
+    <button class="xbtn" onclick="rotateSelected()" title="Xoay 90°">🔄 Xoay</button>
+    <button class="xbtn" onclick="copySelected()">⧉ Copy</button>
+    <button class="xbtn" onclick="pasteCopied()">📋 Paste</button>
+    <div style="flex:1"></div>
+    <button class="xbtn exp" onclick="exportPNG()">🖼 PNG</button>
+    <button class="xbtn pdf" onclick="exportPDF()">📄 XUẤT PDF</button>
+  </div>
+  <div id="canvas-wrap">
+    <canvas id="cv"></canvas>
+  </div>
+  <div id="status">
+    <span>X: <span class="val" id="st-x">0</span></span>
+    <span>Y: <span class="val" id="st-y">0</span></span>
+    <span>Chọn: <span class="val" id="st-sel">0</span></span>
+    <span>Phần tử: <span class="val" id="st-cnt">0</span></span>
+    <span class="hint">SPACE+kéo: Di chuyển · Scroll: Zoom · Del: Xóa · Ctrl+Z: Undo</span>
+  </div>
+</div>
+
+<!-- PROPERTIES PANEL -->
+<div id="pp">
+  <div id="pp-head">THUỘC TÍNH & KHUNG TÊN</div>
+  <div id="pp-body">
+    <div id="no-sel">← Chọn phần tử để chỉnh sửa</div>
+    <div id="el-props">
+      <div class="sec">PHẦN TỬ ĐÃ CHỌN</div>
+      <div class="pg"><div class="pl">Tên / Ký hiệu</div><input class="pi" id="p-name" oninput="upProp('name',this.value)"></div>
+      <div class="pg"><div class="pl">Thông số / Ghi chú</div><input class="pi" id="p-info" oninput="upProp('info',this.value)" placeholder="250kVA, 22kV…"></div>
+      <div class="pg"><div class="pl">Điện áp</div><input class="pi" id="p-volt" oninput="upProp('voltage',this.value)" placeholder="22kV / 0.4kV"></div>
+      <div class="pg"><div class="pl">Dòng / Công suất</div><input class="pi" id="p-curr" oninput="upProp('current',this.value)" placeholder="100A / 250kVA"></div>
+      <div class="pg"><div class="pl">Màu dây kết nối</div>
+        <select class="psel" id="p-wclr" onchange="upWireColor(this.value)">
+          <option value="power">Nguồn điện (đen)</option>
+          <option value="neutral">Trung tính (xanh lá)</option>
+          <option value="control">Điều khiển (xám đứt)</option>
+          <option value="grnd">Tiếp địa (vàng-xanh)</option>
+        </select>
+      </div>
+      <div class="pg"><div class="pl">Xoay</div>
+        <select class="psel" id="p-rot" onchange="upProp('rotation',parseInt(this.value))">
+          <option value="0">0°</option><option value="90">90°</option><option value="180">180°</option><option value="270">270°</option>
+        </select>
+      </div>
+      <button class="prop-btn danger" onclick="deleteSelected()">🗑 Xóa phần tử đã chọn</button>
+    </div>
+
+    <div class="sec">KHUNG BẢN VẼ</div>
+    <div class="pg"><div class="pl">Tên trạm</div><input class="pi" id="tb-name" oninput="upTB()" placeholder="VD: TBA XÍ NGHIỆP A"></div>
+    <div class="pg"><div class="pl">Đơn vị</div><input class="pi" id="tb-unit" value="" oninput="upTB()"></div>
+    <div class="pg"><div class="pl">Tiêu đề bản vẽ</div><input class="pi" id="tb-title" value="SƠ ĐỒ NGUYÊN LÝ NHẤT THỨ" oninput="upTB()"></div>
+    <div class="pg"><div class="pl">Mã bản vẽ</div><input class="pi" id="tb-code" placeholder="EVN-2024-001" oninput="upTB()"></div>
+    <div class="pg"><div class="pl">Tỷ lệ</div><input class="pi" id="tb-scale" value="NTS" oninput="upTB()"></div>
+    <div class="pg"><div class="pl">Người vẽ</div><input class="pi" id="tb-by" oninput="upTB()"></div>
+    <div class="pg"><div class="pl">Người kiểm tra</div><input class="pi" id="tb-chk" oninput="upTB()"></div>
+    <div class="pg"><div class="pl">Phiên bản</div><input class="pi" id="tb-ver" value="1.0" oninput="upTB()"></div>
+  </div>
+</div>
+
+<!-- EXCEL TEMPLATE MODAL -->
+<div class="mover" id="tpl-modal">
+  <div class="modal">
+    <div class="mh"><span>📋 CẤU TRÚC FILE EXCEL</span><button onclick="closeModal('tpl-modal')" style="background:none;border:none;color:var(--text);cursor:pointer;font-size:18px;line-height:1">×</button></div>
+    <div class="mb">
+      <p style="font-size:11px;color:var(--dim);margin-bottom:10px">Sheet đầu tiên cần có các cột sau (đặt tên chính xác):</p>
+      <table class="info">
+        <tr><th>Tên cột</th><th>Mô tả</th><th>Ví dụ</th></tr>
+        <tr><td class="mono">TenTram</td><td>Tên trạm <b style="color:var(--red)">*bắt buộc</b></td><td style="color:var(--dim)">TBA XÍ NGHIỆP A</td></tr>
+        <tr><td class="mono">CongSuat</td><td>Công suất MBA (kVA)</td><td style="color:var(--dim)">250</td></tr>
+        <tr><td class="mono">CapDienAp</td><td>Cấp điện áp</td><td style="color:var(--dim)">22/0.4kV</td></tr>
+        <tr><td class="mono">SoMBA</td><td>Số máy biến áp</td><td style="color:var(--dim)">2</td></tr>
+        <tr><td class="mono">SoLoXuat</td><td>Số lộ xuất tuyến</td><td style="color:var(--dim)">4</td></tr>
+        <tr><td class="mono">Lo1 → Lo8</td><td>Tên lộ xuất tuyến 1…8</td><td style="color:var(--dim)">Lộ Văn Phòng</td></tr>
+        <tr><td class="mono">NguonCap</td><td>Tên nguồn cấp điện</td><td style="color:var(--dim)">Lộ 471-E13.3</td></tr>
+        <tr><td class="mono">MaBanVe</td><td>Mã số bản vẽ</td><td style="color:var(--dim)">EVN-2024-001</td></tr>
+        <tr><td class="mono">NguoiVe</td><td>Người vẽ bản vẽ</td><td style="color:var(--dim)">Nguyễn Văn A</td></tr>
+        <tr><td class="mono">NguoiKT</td><td>Người kiểm tra</td><td style="color:var(--dim)">Trần Thị B</td></tr>
+      </table>
+      <p style="font-size:10px;color:var(--dim);margin-top:10px">💡 Các cột không bắt buộc sẽ dùng giá trị mặc định nếu để trống.</p>
+    </div>
+    <div class="mf"><button class="btn-s" onclick="closeModal('tpl-modal')">Đóng</button></div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════
+//  GLOBALS
+// ════════════════════════════════════════════════════════
+const CV = document.getElementById('cv');
+const CTX = CV.getContext('2d');
+const GRID = 20;
+const DPR = window.devicePixelRatio || 1;
+
+const S = {
+  tool:'select', els:[], wires:[], sel:new Set(),
+  zoom:1, px:0, py:0,
+  hist:[], hIdx:-1,
+  TB:{ name:'',unit:'',title:'SƠ ĐỒ NGUYÊN LÝ NHẤT THỨ',code:'',scale:'NTS',by:'',chk:'',ver:'1.0',img:null },
+  showGrid:true, spaceDown:false,
+  isPan:false, panS:null,
+  isDrag:false, dragS:null,
+  rubberBand:null,
+  stList:[],
+  clipboard:[],
+  wireStart:null, tempWire:null,
+};
+
+// World paper size (A4 landscape at 96dpi equivalent)
+const PW = 1120, PH = 792;
+
+// ════════════════════════════════════════════════════════
+//  ELEMENT TYPE DEFINITIONS
+// ════════════════════════════════════════════════════════
+const ETYPES = {
+  mba:   {label:'MBA',full:'Máy Biến Áp',w:52,h:72,ports:[{x:0,y:-36},{x:0,y:36}]},
+  cb:    {label:'MC/AB',full:'Máy Cắt / Aptomat',w:24,h:42,ports:[{x:0,y:-21},{x:0,y:21}]},
+  dcl:   {label:'DCL',full:'Dao Cách Ly',w:28,h:48,ports:[{x:0,y:-24},{x:0,y:24}]},
+  dpt:   {label:'DPT',full:'Dao Phụ Tải (LBS)',w:28,h:48,ports:[{x:0,y:-24},{x:0,y:24}]},
+  fuse:  {label:'Cầu Chì',full:'Cầu Chì (Fuse)',w:16,h:36,ports:[{x:0,y:-18},{x:0,y:18}]},
+  ct:    {label:'TI',full:'Máy Biến Dòng (CT)',w:28,h:28,ports:[{x:0,y:-14},{x:0,y:14}]},
+  vt:    {label:'TU',full:'Máy Biến Điện Áp (VT)',w:30,h:40,ports:[{x:0,y:-20},{x:0,y:20}]},
+  la:    {label:'CSV',full:'Chống Sét Van (LA)',w:18,h:40,ports:[{x:0,y:-20},{x:0,y:0}]},
+  grnd:  {label:'TĐ',full:'Tiếp Địa (Ground)',w:24,h:28,ports:[{x:0,y:-14}]},
+  busb:  {label:'Thanh Cái',full:'Thanh Góp (Busbar)',w:200,h:8,ports:[{x:0,y:0}]},
+  load:  {label:'Phụ Tải',full:'Phụ Tải (Load)',w:30,h:32,ports:[{x:0,y:-16}]},
+  src:   {label:'Nguồn',full:'Nguồn Điện (Source)',w:28,h:28,ports:[{x:0,y:14}]},
+};
+
+// ════════════════════════════════════════════════════════
+//  CANVAS INIT & RESIZE
+// ════════════════════════════════════════════════════════
+function resizeCV(){
+  const wrap = document.getElementById('canvas-wrap');
+  const W = wrap.clientWidth, H = wrap.clientHeight;
+  CV.width = W * DPR; CV.height = H * DPR;
+  CV.style.width = W+'px'; CV.style.height = H+'px';
+  CTX.setTransform(DPR,0,0,DPR,0,0);
+  draw();
+}
+window.addEventListener('resize', resizeCV);
+
+// ════════════════════════════════════════════════════════
+//  COORDINATE HELPERS
+// ════════════════════════════════════════════════════════
+function s2w(sx,sy){return{x:(sx-S.px)/S.zoom,y:(sy-S.py)/S.zoom}}
+function w2s(wx,wy){return{x:wx*S.zoom+S.px,y:wy*S.zoom+S.py}}
+function cvPos(e){const r=CV.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top}}
+function snp(v){return Math.round(v/GRID)*GRID}
+function paperOrig(){
+  const wrap=document.getElementById('canvas-wrap');
+  const W=wrap.clientWidth,H=wrap.clientHeight;
+  return{ox:W/2/S.zoom-PW/2-S.px/S.zoom,oy:H/2/S.zoom-PH/2-S.py/S.zoom};
+}
+
+// ════════════════════════════════════════════════════════
+//  SYMBOL DRAWING FUNCTIONS
+// ════════════════════════════════════════════════════════
+function drawSym(ctx,el){
+  ctx.save();
+  ctx.translate(el.x,el.y);
+  if(el.rotation)ctx.rotate(el.rotation*Math.PI/180);
+  ctx.strokeStyle=S.sel.has(el.id)?'#3498db':'#111';
+  ctx.fillStyle='#fff';
+  ctx.lineWidth=S.sel.has(el.id)?2:1.5;
+  switch(el.type){
+    case'mba':  sym_mba(ctx);break;
+    case'cb':   sym_cb(ctx);break;
+    case'dcl':  sym_dcl(ctx);break;
+    case'dpt':  sym_dpt(ctx);break;
+    case'fuse': sym_fuse(ctx);break;
+    case'ct':   sym_ct(ctx);break;
+    case'vt':   sym_vt(ctx);break;
+    case'la':   sym_la(ctx);break;
+    case'grnd': sym_grnd(ctx);break;
+    case'busb': sym_busb(ctx,el);break;
+    case'load': sym_load(ctx);break;
+    case'src':  sym_src(ctx);break;
+    default:    sym_def(ctx);
+  }
+  if(el.type!=='busb'){
+    const ed=ETYPES[el.type]||{w:40};
+    ctx.save();ctx.resetTransform();ctx.setTransform(DPR,0,0,DPR,0,0);
+    // back to transformed state
+    ctx.restore();
+    const lx=ed.w/2+7;
+    ctx.fillStyle='#111';ctx.font='bold 10px Arial';ctx.textAlign='left';ctx.textBaseline='middle';
+    if(el.name)ctx.fillText(el.name,lx,-7);
+    if(el.info){ctx.font='9px Arial';ctx.fillStyle='#555';ctx.fillText(el.info,lx,7);}
+    if(el.voltage){ctx.font='9px Arial';ctx.fillStyle='#1a5276';ctx.fillText(el.voltage,lx,19);}
+  }
+  // Wire tool: show ports
+  if(S.tool==='wire'){
+    const ed=ETYPES[el.type];
+    if(ed&&ed.ports)ed.ports.forEach(p=>{
+      ctx.beginPath();ctx.arc(p.x,p.y,5,0,Math.PI*2);
+      ctx.fillStyle='rgba(244,156,14,.8)';ctx.fill();
+      ctx.strokeStyle='#f49c0e';ctx.lineWidth=1;ctx.stroke();
+    });
+  }
+  // Selection box
+  if(S.sel.has(el.id)){
+    const ed=ETYPES[el.type]||{w:40,h:40};
+    ctx.strokeStyle='#3498db';ctx.setLineDash([4,3]);ctx.lineWidth=1;
+    ctx.strokeRect(-ed.w/2-6,-ed.h/2-6,ed.w+12,ed.h+12);
+    ctx.setLineDash([]);
+  }
+  ctx.restore();
+}
+
+function sym_mba(c){
+  c.beginPath();c.arc(0,-17,17,0,Math.PI*2);c.fill();c.stroke();
+  c.beginPath();c.arc(0,17,17,0,Math.PI*2);c.fill();c.stroke();
+  // Y winding top
+  c.strokeStyle='#666';c.lineWidth=1;
+  c.beginPath();c.moveTo(-6,-26);c.lineTo(0,-17);c.moveTo(6,-26);c.lineTo(0,-17);c.moveTo(0,-17);c.lineTo(0,-10);c.stroke();
+  // Δ winding bottom
+  c.beginPath();c.moveTo(-7,10);c.lineTo(0,24);c.lineTo(7,10);c.closePath();c.stroke();
+}
+function sym_cb(c){
+  c.fillRect(-12,-21,24,42);c.strokeRect(-12,-21,24,42);
+  c.beginPath();c.moveTo(-8,-17);c.lineTo(8,17);c.moveTo(8,-17);c.lineTo(-8,17);c.stroke();
+}
+function sym_dcl(c){
+  // bottom pivot
+  c.beginPath();c.arc(0,24,3.5,0,Math.PI*2);c.fillStyle='#333';c.fill();
+  // open blade
+  c.strokeStyle=c.strokeStyle;c.lineWidth=1.5;
+  c.beginPath();c.moveTo(0,20.5);c.lineTo(-14,-12);c.stroke();
+  // top contact
+  c.beginPath();c.arc(0,-24,3.5,0,Math.PI*2);c.fill();
+  c.beginPath();c.moveTo(0,-24);c.lineTo(0,-20);c.stroke();
+  // hinge legs
+  c.beginPath();c.moveTo(-5,22);c.lineTo(5,22);c.stroke();
+}
+function sym_dpt(c){
+  c.beginPath();c.arc(0,24,3.5,0,Math.PI*2);c.fillStyle='#333';c.fill();
+  c.strokeStyle=c.strokeStyle;c.lineWidth=1.5;
+  c.beginPath();c.moveTo(0,20.5);c.lineTo(-10,-10);c.stroke();
+  // arc indicator
+  c.beginPath();c.arc(-5,-5,7,0.6,Math.PI*1.4);c.stroke();
+  c.beginPath();c.arc(0,-24,3.5,0,Math.PI*2);c.fill();
+}
+function sym_fuse(c){
+  c.fillRect(-8,-16,16,32);c.strokeRect(-8,-16,16,32);
+  c.beginPath();c.moveTo(0,-16);
+  c.bezierCurveTo(-7,-8,7,0,-7,8);c.bezierCurveTo(-7,11,0,16,0,16);c.stroke();
+}
+function sym_ct(c){
+  c.beginPath();c.arc(0,0,13,0,Math.PI*2);c.fill();c.stroke();
+  c.beginPath();c.moveTo(0,-13);c.lineTo(0,13);c.stroke();
+  c.font='bold 8px Arial';c.fillStyle='#444';c.textAlign='center';c.textBaseline='middle';c.fillText('TI',0,0);
+}
+function sym_vt(c){
+  c.beginPath();c.arc(0,-10,11,0,Math.PI*2);c.fill();c.stroke();
+  c.beginPath();c.arc(0,10,11,0,Math.PI*2);c.fill();c.stroke();
+  c.font='7px Arial';c.fillStyle='#444';c.textAlign='center';c.textBaseline='middle';c.fillText('TU',0,0);
+}
+function sym_la(c){
+  // Lightning arrow down
+  c.beginPath();c.moveTo(0,-20);c.lineTo(9,-4);c.lineTo(0,-4);c.lineTo(9,10);c.fillStyle='#e74c3c';c.fill();c.stroke();
+  c.strokeStyle='#333';c.lineWidth=1.5;
+  c.beginPath();c.moveTo(0,10);c.lineTo(0,18);c.moveTo(-8,18);c.lineTo(8,18);c.moveTo(-5,22);c.lineTo(5,22);c.moveTo(-2,26);c.lineTo(2,26);c.stroke();
+}
+function sym_grnd(c){
+  c.beginPath();c.moveTo(0,-14);c.lineTo(0,0);c.stroke();
+  c.beginPath();c.moveTo(-12,0);c.lineTo(12,0);c.moveTo(-8,5);c.lineTo(8,5);c.moveTo(-4,10);c.lineTo(4,10);c.stroke();
+}
+function sym_busb(c,el){
+  const L=el.busLen||200;
+  c.fillStyle='#111';c.fillRect(-L/2,-4,L,8);
+  if(el.name){c.fillStyle='#222';c.font='bold 11px Arial';c.textAlign='center';c.textBaseline='bottom';c.fillText(el.name,0,-6);}
+}
+function sym_load(c){
+  c.beginPath();c.moveTo(0,-16);c.lineTo(-13,12);c.lineTo(13,12);c.closePath();
+  c.fillStyle='#eaf0fa';c.fill();c.stroke();
+}
+function sym_src(c){
+  c.beginPath();c.arc(0,0,13,0,Math.PI*2);c.fillStyle='#fff8e1';c.fill();c.stroke();
+  c.font='bold 13px Arial';c.fillStyle='#e67e22';c.textAlign='center';c.textBaseline='middle';c.fillText('⚡',0,1);
+}
+function sym_def(c){
+  c.fillRect(-14,-14,28,28);c.strokeRect(-14,-14,28,28);
+  c.beginPath();c.moveTo(-9,-9);c.lineTo(9,9);c.moveTo(9,-9);c.lineTo(-9,9);c.stroke();
+}
+
+// ════════════════════════════════════════════════════════
+//  WIRE DRAWING
+// ════════════════════════════════════════════════════════
+const WIRE_STYLE={
+  power:{color:'#111',w:1.5,dash:[]},
+  neutral:{color:'#1e8449',w:1.5,dash:[]},
+  control:{color:'#7f8c8d',w:1,dash:[5,3]},
+  grnd:{color:'#d4ac0d',w:1.5,dash:[]}
+};
+function getBusPoint(el,otherX){
+  const L=(el.busLen||200)/2;
+  const cx=Math.max(el.x-L,Math.min(el.x+L,otherX));
+  return{x:cx,y:el.y};
+}
+function getPort(el,pidx,fallback){
+  if(!el)return{x:0,y:0};
+  if(el.type==='busb')return getBusPoint(el,fallback!==undefined?fallback:el.x);
+  const ed=ETYPES[el.type];
+  const ports=ed?ed.ports:[];
+  const p=ports[pidx!==undefined&&pidx<ports.length?pidx:0];
+  return{x:el.x+(p?p.x:0),y:el.y+(p?p.y:0)};
+}
+function drawWires(){
+  S.wires.forEach(w=>{
+    const fe=S.els.find(e=>e.id===w.from);
+    const te=S.els.find(e=>e.id===w.to);
+    if(!fe||!te)return;
+    const fp=getPort(fe,w.fp,te.x);
+    const tp=getPort(te,w.tp,fe.x);
+    const ws=WIRE_STYLE[w.style||'power'];
+    CTX.strokeStyle=ws.color;CTX.lineWidth=ws.w;CTX.setLineDash(ws.dash);
+    CTX.beginPath();CTX.moveTo(fp.x,fp.y);
+    drawOrtho(CTX,fp.x,fp.y,tp.x,tp.y);
+    CTX.stroke();CTX.setLineDash([]);
+  });
+}
+function drawOrtho(ctx,x1,y1,x2,y2){
+  if(Math.abs(x2-x1)<2){ctx.lineTo(x2,y2);return;}
+  const my=(y1+y2)/2;
+  ctx.lineTo(x1,my);ctx.lineTo(x2,my);ctx.lineTo(x2,y2);
+}
+
+// ════════════════════════════════════════════════════════
+//  TITLE BLOCK
+// ════════════════════════════════════════════════════════
+function drawTitleBlock(ctx,ox,oy){
+  const tb=S.TB;
+  const bx=ox+PW-350,by=oy+PH-130,bw=335,bh=115;
+
+  if(tb.img){
+    // Draw custom image in full bottom strip
+    ctx.drawImage(tb.img,ox+15,oy+PH-130,PW-30,115);
+    return;
+  }
+  // Default title block
+  ctx.fillStyle='#fdfcf9';ctx.fillRect(bx,by,bw,bh);
+  ctx.strokeStyle='#000';ctx.lineWidth=1;ctx.strokeRect(bx,by,bw,bh);
+  // Header bar
+  ctx.fillStyle='#1a3f6a';ctx.fillRect(bx+1,by+1,bw-2,26);
+  ctx.fillStyle='#fff';ctx.font='bold 10px Arial';ctx.textAlign='left';ctx.textBaseline='middle';
+  ctx.fillText(tb.unit||'',bx+8,by+14);
+  // Lines
+  ctx.strokeStyle='#aaa';ctx.lineWidth=0.5;
+  [[0,27],[0,57],[0,82],[0,100],[bw*0.5,27]].forEach(([dx,dy])=>{
+    if(dx)ctx.beginPath(),ctx.moveTo(bx+dx,by+dy),ctx.lineTo(bx+bw,by+dy),ctx.stroke();
+    else ctx.beginPath(),ctx.moveTo(bx,by+dy),ctx.lineTo(bx+bw,by+dy),ctx.stroke();
+  });
+  ctx.lineWidth=0.5;
+  ctx.beginPath();ctx.moveTo(bx+bw*0.5,by+27);ctx.lineTo(bx+bw*0.5,by+bh);ctx.stroke();
+  // Content
+  ctx.fillStyle='#c0392b';ctx.font='bold 12px Arial';ctx.textBaseline='top';
+  ctx.fillText('TRẠM: '+(tb.name||'').toUpperCase(),bx+8,by+30);
+  ctx.fillStyle='#333';ctx.font='10px Arial';
+  ctx.fillText(tb.title||'SƠ ĐỒ NGUYÊN LÝ NHẤT THỨ',bx+8,by+49);
+  ctx.font='9px Arial';ctx.fillStyle='#555';
+  const col2x=bx+bw*0.5+6;
+  ctx.fillText('MÃ BĐ: '+(tb.code||'---'),bx+8,by+62);
+  ctx.fillText('TỶ LỆ: '+(tb.scale||'NTS'),bx+8,by+75);
+  ctx.fillText('NGƯỜI VẼ: '+(tb.by||''),col2x,by+62);
+  ctx.fillText('KIỂM TRA: '+(tb.chk||''),col2x,by+75);
+  ctx.fillText('NGÀY: '+new Date().toLocaleDateString('vi-VN'),bx+8,by+90);
+  ctx.fillText('PHIÊN BẢN: '+(tb.ver||'1.0'),col2x,by+90);
+  ctx.textAlign='left';ctx.textBaseline='alphabetic';
+}
+
+// ════════════════════════════════════════════════════════
+//  MAIN DRAW
+// ════════════════════════════════════════════════════════
+function draw(){
+  const wrap=document.getElementById('canvas-wrap');
+  const W=wrap.clientWidth,H=wrap.clientHeight;
+  CTX.clearRect(0,0,W,H);
+  // Background
+  CTX.fillStyle='#6b7a8a';CTX.fillRect(0,0,W,H);
+
+  CTX.save();
+  CTX.translate(S.px,S.py);
+  CTX.scale(S.zoom,S.zoom);
+
+  const {ox,oy}=paperOrig();
+
+  // Paper shadow
+  CTX.fillStyle='rgba(0,0,0,.25)';CTX.fillRect(ox+5,oy+5,PW,PH);
+  // Paper white
+  CTX.fillStyle='#fff';CTX.fillRect(ox,oy,PW,PH);
+  // Grid
+  if(S.showGrid){
+    CTX.strokeStyle='#e8eef2';CTX.lineWidth=0.5;
+    for(let x=ox;x<ox+PW;x+=GRID){CTX.beginPath();CTX.moveTo(x,oy);CTX.lineTo(x,oy+PH);CTX.stroke();}
+    for(let y=oy;y<oy+PH;y+=GRID){CTX.beginPath();CTX.moveTo(ox,y);CTX.lineTo(ox+PW,y);CTX.stroke();}
+  }
+  // Frame
+  CTX.strokeStyle='#000';CTX.lineWidth=2;CTX.strokeRect(ox+10,oy+10,PW-20,PH-20);
+  CTX.lineWidth=1;CTX.strokeRect(ox+15,oy+15,PW-30,PH-30);
+  // Draw wires
+  drawWires();
+  // Temp wire preview
+  if(S.wireStart&&S.tempWire){
+    const fe=S.els.find(e=>e.id===S.wireStart.id);
+    if(fe){
+      const fp=getPort(fe,S.wireStart.pi);
+      CTX.strokeStyle='#f49c0e';CTX.setLineDash([6,4]);CTX.lineWidth=1.5;
+      CTX.beginPath();CTX.moveTo(fp.x,fp.y);
+      drawOrtho(CTX,fp.x,fp.y,S.tempWire.x,S.tempWire.y);
+      CTX.stroke();CTX.setLineDash([]);
+    }
+  }
+  // Draw elements
+  S.els.forEach(el=>drawSym(CTX,el));
+  // Title block
+  drawTitleBlock(CTX,ox,oy);
+  // Rubber band
+  if(S.rubberBand){
+    const rb=S.rubberBand;
+    CTX.strokeStyle='#3498db';CTX.setLineDash([4,3]);CTX.lineWidth=1;
+    CTX.fillStyle='rgba(52,152,219,.06)';
+    CTX.fillRect(rb.x,rb.y,rb.w,rb.h);CTX.strokeRect(rb.x,rb.y,rb.w,rb.h);
+    CTX.setLineDash([]);
+  }
+  CTX.restore();
+  updStatus();
+}
+
+// ════════════════════════════════════════════════════════
+//  MOUSE EVENTS
+// ════════════════════════════════════════════════════════
+CV.addEventListener('mousedown',e=>{
+  const sp=cvPos(e);const wp=s2w(sp.x,sp.y);
+  if(S.spaceDown||e.button===1){S.isPan=true;S.panS={x:sp.x-S.px,y:sp.y-S.py};CV.style.cursor='grabbing';return;}
+  if(S.tool==='select'){
+    const hit=hitEl(wp.x,wp.y);
+    if(hit){
+      if(!e.shiftKey&&!S.sel.has(hit.id))S.sel.clear();
+      S.sel.add(hit.id);
+      S.isDrag=true;
+      S.dragS={mx:wp.x,my:wp.y,els:S.els.filter(el=>S.sel.has(el.id)).map(el=>({id:el.id,ox:el.x,oy:el.y}))};
+      showProps(hit);
+    }else{
+      if(!e.shiftKey)S.sel.clear();
+      S.rubberBand={x:wp.x,y:wp.y,w:0,h:0};
+      hideProps();
+    }
+  }else if(S.tool==='wire'){
+    const ph=hitPort(wp.x,wp.y);
+    if(ph){
+      if(!S.wireStart){S.wireStart=ph;S.tempWire={x:wp.x,y:wp.y};}
+      else{
+        if(ph.id!==S.wireStart.id){
+          pushHist();
+          S.wires.push({id:uid(),from:S.wireStart.id,fp:S.wireStart.pi,to:ph.id,tp:ph.pi,style:'power'});
+        }
+        S.wireStart=null;S.tempWire=null;
+      }
+    }else{S.wireStart=null;S.tempWire=null;}
+  }else if(S.tool==='text'){
+    const txt=prompt('Nhập văn bản:','');
+    if(txt){pushHist();S.els.push({id:uid(),type:'text_el',x:snp(wp.x),y:snp(wp.y),text:txt,name:'',info:''});}
+    setTool('select');
+  }else if(ETYPES[S.tool]){
+    pushHist();
+    const el={id:uid(),type:S.tool,x:snp(wp.x),y:snp(wp.y),rotation:0,name:ETYPES[S.tool].label,info:'',voltage:'',current:''};
+    if(S.tool==='busb')el.busLen=200;
+    S.els.push(el);S.sel.clear();S.sel.add(el.id);showProps(el);
+  }
+  draw();
+});
+
+CV.addEventListener('mousemove',e=>{
+  const sp=cvPos(e);const wp=s2w(sp.x,sp.y);
+  document.getElementById('st-x').textContent=Math.round(wp.x);
+  document.getElementById('st-y').textContent=Math.round(wp.y);
+  if(S.isPan){S.px=sp.x-S.panS.x;S.py=sp.y-S.panS.y;draw();return;}
+  if(S.isDrag&&S.dragS){
+    const dx=wp.x-S.dragS.mx,dy=wp.y-S.dragS.my;
+    S.dragS.els.forEach(s=>{const el=S.els.find(e=>e.id===s.id);if(el){el.x=snp(s.ox+dx);el.y=snp(s.oy+dy);}});
+    draw();
+  }
+  if(S.rubberBand){S.rubberBand.w=wp.x-S.rubberBand.x;S.rubberBand.h=wp.y-S.rubberBand.y;draw();}
+  if(S.tempWire){S.tempWire={x:wp.x,y:wp.y};draw();}
+});
+
+CV.addEventListener('mouseup',e=>{
+  if(S.isPan){S.isPan=false;CV.style.cursor=S.spaceDown?'grab':'default';return;}
+  if(S.isDrag){pushHist();S.isDrag=false;S.dragS=null;}
+  if(S.rubberBand){
+    const rb=S.rubberBand;
+    const x1=Math.min(rb.x,rb.x+rb.w),x2=Math.max(rb.x,rb.x+rb.w);
+    const y1=Math.min(rb.y,rb.y+rb.h),y2=Math.max(rb.y,rb.y+rb.h);
+    S.els.forEach(el=>{if(el.x>=x1&&el.x<=x2&&el.y>=y1&&el.y<=y2)S.sel.add(el.id);});
+    S.rubberBand=null;draw();
+  }
+});
+
+CV.addEventListener('dblclick',e=>{
+  const sp=cvPos(e);const wp=s2w(sp.x,sp.y);
+  const hit=hitEl(wp.x,wp.y);
+  if(hit){const n=prompt('Tên/Ký hiệu:',hit.name||'');if(n!==null){hit.name=n;pushHist();draw();}}
+});
+
+CV.addEventListener('wheel',e=>{
+  e.preventDefault();
+  const sp=cvPos(e);const f=e.deltaY<0?1.12:0.89;
+  const nz=Math.max(0.15,Math.min(6,S.zoom*f));
+  S.px=sp.x-(sp.x-S.px)*(nz/S.zoom);S.py=sp.y-(sp.y-S.py)*(nz/S.zoom);S.zoom=nz;
+  document.getElementById('zoom-box').textContent=Math.round(S.zoom*100)+'%';draw();
+},{passive:false});
+
+document.addEventListener('keydown',e=>{
+  if(e.code==='Space'&&!e.target.matches('input,textarea,select')){S.spaceDown=true;CV.style.cursor='grab';}
+  if((e.ctrlKey||e.metaKey)){
+    if(e.key==='z'){e.preventDefault();undo();}
+    if(e.key==='y'){e.preventDefault();redo();}
+    if(e.key==='s'){e.preventDefault();saveProject();}
+    if(e.key==='c'){e.preventDefault();copySelected();}
+    if(e.key==='v'){e.preventDefault();pasteCopied();}
+  }
+  if((e.key==='Delete'||e.key==='Backspace')&&!e.target.matches('input,textarea,select'))deleteSelected();
+  if(e.key==='Escape'){S.wireStart=null;S.tempWire=null;setTool('select');}
+});
+document.addEventListener('keyup',e=>{
+  if(e.code==='Space'){S.spaceDown=false;CV.style.cursor='default';}
+});
+
+// ════════════════════════════════════════════════════════
+//  HIT TESTING
+// ════════════════════════════════════════════════════════
+function hitEl(wx,wy){
+  for(let i=S.els.length-1;i>=0;i--){
+    const el=S.els[i];const ed=ETYPES[el.type]||{w:40,h:40};
+    const hw=ed.w/2+8,hh=ed.h/2+8;
+    if(wx>=el.x-hw&&wx<=el.x+hw&&wy>=el.y-hh&&wy<=el.y+hh)return el;
+  }
+  return null;
+}
+function hitPort(wx,wy){
+  // Check ports on all elements
+  for(const el of S.els){
+    const ed=ETYPES[el.type];if(!ed)continue;
+    if(ed.ports)for(let i=0;i<ed.ports.length;i++){
+      const p=ed.ports[i];
+      if(Math.hypot(wx-(el.x+p.x),wy-(el.y+p.y))<10)return{id:el.id,pi:i};
+    }
+    // Also accept clicking the body of element
+    const hw=ed.w/2+6,hh=ed.h/2+6;
+    if(wx>=el.x-hw&&wx<=el.x+hw&&wy>=el.y-hh&&wy<=el.y+hh)return{id:el.id,pi:0};
+  }
+  return null;
+}
+
+// ════════════════════════════════════════════════════════
+//  UNDO / REDO
+// ════════════════════════════════════════════════════════
+function pushHist(){
+  const snap=JSON.stringify({els:S.els,wires:S.wires});
+  S.hist=S.hist.slice(0,S.hIdx+1);S.hist.push(snap);
+  if(S.hist.length>50)S.hist.shift();else S.hIdx++;
+}
+function undo(){
+  if(S.hIdx>0){S.hIdx--;const s=JSON.parse(S.hist[S.hIdx]);S.els=s.els;S.wires=s.wires;S.sel.clear();draw();}
+}
+function redo(){
+  if(S.hIdx<S.hist.length-1){S.hIdx++;const s=JSON.parse(S.hist[S.hIdx]);S.els=s.els;S.wires=s.wires;S.sel.clear();draw();}
+}
+
+// ════════════════════════════════════════════════════════
+//  ELEMENT OPERATIONS
+// ════════════════════════════════════════════════════════
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
+
+function deleteSelected(){
+  if(!S.sel.size)return;pushHist();
+  const ids=new Set(S.sel);
+  S.els=S.els.filter(e=>!ids.has(e.id));
+  S.wires=S.wires.filter(w=>!ids.has(w.from)&&!ids.has(w.to));
+  S.sel.clear();hideProps();draw();
+}
+
+function rotateSelected(){
+  S.sel.forEach(id=>{const el=S.els.find(e=>e.id===id);if(el)el.rotation=((el.rotation||0)+90)%360;});
+  pushHist();draw();
+}
+
+function copySelected(){
+  S.clipboard=S.els.filter(e=>S.sel.has(e.id)).map(e=>JSON.parse(JSON.stringify(e)));
+}
+
+function pasteCopied(){
+  if(!S.clipboard.length)return;pushHist();
+  S.sel.clear();
+  const offs=snp(40);
+  S.clipboard.forEach(el=>{
+    const ne={...el,id:uid(),x:el.x+offs,y:el.y+offs};
+    S.els.push(ne);S.sel.add(ne.id);
+  });
+  draw();
+}
+
+function newDiagram(){
+  if(!confirm('Tạo bản vẽ mới? Dữ liệu hiện tại sẽ bị xóa.'))return;
+  pushHist();S.els=[];S.wires=[];S.sel.clear();
+  S.TB={name:'',unit:'',title:'SƠ ĐỒ NGUYÊN LÝ NHẤT THỨ',code:'',scale:'NTS',by:'',chk:'',ver:'1.0',img:null};
+  syncTBInputs();draw();
+}
+
+// ════════════════════════════════════════════════════════
+//  ZOOM / VIEW
+// ════════════════════════════════════════════════════════
+function zm(f){
+  const wrap=document.getElementById('canvas-wrap');
+  const cx=wrap.clientWidth/2,cy=wrap.clientHeight/2;
+  const nz=Math.max(0.15,Math.min(6,S.zoom*f));
+  S.px=cx-(cx-S.px)*(nz/S.zoom);S.py=cy-(cy-S.py)*(nz/S.zoom);S.zoom=nz;
+  document.getElementById('zoom-box').textContent=Math.round(S.zoom*100)+'%';draw();
+}
+function fitView(){S.zoom=1;S.px=0;S.py=0;document.getElementById('zoom-box').textContent='100%';draw();}
+function toggleGrid(){S.showGrid=!S.showGrid;draw();}
+
+// ════════════════════════════════════════════════════════
+//  TOOL MANAGEMENT
+// ════════════════════════════════════════════════════════
+function setTool(t){
+  S.tool=t;S.wireStart=null;S.tempWire=null;
+  document.querySelectorAll('.tbtn[data-tool]').forEach(b=>b.classList.toggle('on',b.dataset.tool===t));
+  document.querySelectorAll('.sbtn').forEach(b=>b.classList.toggle('on',b.dataset.type===t));
+  CV.style.cursor={select:'default',wire:'crosshair',text:'text'}[t]||'cell';
+  draw();
+}
+
+// ════════════════════════════════════════════════════════
+//  PROPERTIES PANEL
+// ════════════════════════════════════════════════════════
+let curPropId=null;
+function showProps(el){
+  curPropId=el.id;
+  document.getElementById('no-sel').style.display='none';
+  document.getElementById('el-props').style.display='block';
+  document.getElementById('p-name').value=el.name||'';
+  document.getElementById('p-info').value=el.info||'';
+  document.getElementById('p-volt').value=el.voltage||'';
+  document.getElementById('p-curr').value=el.current||'';
+  document.getElementById('p-rot').value=el.rotation||0;
+}
+function hideProps(){
+  curPropId=null;
+  document.getElementById('no-sel').style.display='block';
+  document.getElementById('el-props').style.display='none';
+}
+function upProp(f,v){const el=S.els.find(e=>e.id===curPropId);if(el){el[f]=v;draw();}}
+function upWireColor(v){S.wires.filter(w=>S.sel.has(w.from)||S.sel.has(w.to)).forEach(w=>w.style=v);draw();}
+function updStatus(){
+  document.getElementById('st-sel').textContent=S.sel.size;
+  document.getElementById('st-cnt').textContent=S.els.length;
+}
+
+// ════════════════════════════════════════════════════════
+//  TITLE BLOCK
+// ════════════════════════════════════════════════════════
+function upTB(){
+  S.TB.name=document.getElementById('tb-name').value;
+  S.TB.unit=document.getElementById('tb-unit').value;
+  S.TB.title=document.getElementById('tb-title').value;
+  S.TB.code=document.getElementById('tb-code').value;
+  S.TB.scale=document.getElementById('tb-scale').value;
+  S.TB.by=document.getElementById('tb-by').value;
+  S.TB.chk=document.getElementById('tb-chk').value;
+  S.TB.ver=document.getElementById('tb-ver').value;
+  draw();
+}
+function syncTBInputs(){
+  ['name','unit','title','code','scale','by','chk','ver'].forEach(k=>{
+    const el=document.getElementById('tb-'+k);if(el)el.value=S.TB[k]||'';
+  });
+}
+function loadTitleImg(inp){
+  const f=inp.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=ev=>{const img=new Image();img.onload=()=>{S.TB.img=img;draw();};img.src=ev.target.result;};
+  r.readAsDataURL(f);inp.value='';
+}
+function clearTitleImg(){S.TB.img=null;draw();}
+
+// ════════════════════════════════════════════════════════
+//  EXCEL → AUTO DIAGRAM
+// ════════════════════════════════════════════════════════
+function loadExcel(inp){
+  const f=inp.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=ev=>{
+    const wb=XLSX.read(ev.target.result,{type:'array'});
+    const data=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+    S.stList=data;
+    renderStList(data);
+    if(data.length)autoGen(data[0]);
+  };
+  r.readAsArrayBuffer(f);inp.value='';
+}
+
+function renderStList(data){
+  const c=document.getElementById('st-list');
+  if(!data.length){c.innerHTML='<div id="empty-list">Không có dữ liệu</div>';return;}
+  c.innerHTML=data.map((d,i)=>`
+    <div class="si ${i===0?'on':''}" id="si-${i}" onclick="selStation(${i})">
+      <div class="nm">${d.TenTram||d['Tên Trạm']||'Trạm '+(i+1)}</div>
+      <div class="in">${d.CongSuat||'?'}kVA · ${d.CapDienAp||'22/0.4kV'}</div>
+    </div>`).join('');
+}
+
+function selStation(idx){
+  document.querySelectorAll('.si').forEach((el,i)=>el.classList.toggle('on',i===idx));
+  autoGen(S.stList[idx]);
+}
+
+function autoGen(row){
+  const name   = row.TenTram||row['Tên Trạm']||'TRẠM';
+  const cap    = String(row.CongSuat||row['Công Suất']||'');
+  const volt   = row.CapDienAp||row['Cấp Điện Áp']||'22/0.4kV';
+  const nMBA   = Math.max(1,Math.min(4,parseInt(row.SoMBA||row['Số MBA']||1)||1));
+  const nFeed  = Math.max(1,Math.min(8,parseInt(row.SoLoXuat||row['Số Lộ Xuất']||4)||4));
+  const nguon  = row.NguonCap||row['Nguồn Cấp']||'';
+  const mabv   = row.MaBanVe||row['Mã Bản Vẽ']||'';
+  const byPer  = row.NguoiVe||row['Người Vẽ']||'';
+  const chkPer = row.NguoiKT||row['Người Kiểm Tra']||'';
+  const feeds  = Array.from({length:nFeed},(_,i)=>row[`Lo${i+1}`]||row[`Lộ ${i+1}`]||`Lộ ${i+1}`);
+  const vp=volt.split('/');
+  const hvKV=vp[0]||'22',lvKV=vp[1]||'0.4';
+
+  // Update title block
+  S.TB={...S.TB,name,code:mabv,by:byPer,chk:chkPer};
+  syncTBInputs();
+  pushHist();S.els=[];S.wires=[];S.sel.clear();
+
+  // Layout params
+  const mbaGap=Math.max(160,nFeed*55);
+  const totalW=(nMBA-1)*mbaGap;
+  const CX=560;// world center
+  const baseX=CX-totalW/2;
+  const TOP_Y=80;
+
+  // ── High-voltage busbar ──
+  const hvBusLen=Math.max(380,totalW+280);
+  addEl('hv-bus','busb',CX,TOP_Y,{busLen:hvBusLen,name:`THANH CÁI ${hvKV}kV`,info:'',rotation:0});
+
+  // ── Source input ──
+  if(nguon){
+    addEl('src0','src',CX-hvBusLen/2+40,TOP_Y-65,{name:nguon,info:`${hvKV}kV`,rotation:0});
+    addWire('src0','hv-bus','power',0,0);
+  }
+
+  // ── Per transformer stack ──
+  for(let i=0;i<nMBA;i++){
+    const tx=baseX+i*mbaGap;
+    let y=TOP_Y;
+    const pre=`m${i}`;
+    const seq=[
+      {id:`${pre}dcl`,type:'dcl',name:`DCL${i+1}`,info:`${hvKV}kV`,dy:70},
+      {id:`${pre}cb1`,type:'cb', name:`MC${i+1}`,  info:`${hvKV}kV`,dy:75},
+      {id:`${pre}ti`, type:'ct', name:`TI${i+1}`,  info:'',         dy:65},
+      {id:`${pre}mba`,type:'mba',name:`T${i+1}`,   info:`${cap}kVA`,dy:85},
+      {id:`${pre}ab`, type:'cb', name:`AB T.${i+1}`,info:`${lvKV}kV`,dy:85},
+    ];
+    addWire('hv-bus',`${pre}dcl`,'power',0,0);
+    seq.forEach((s,si)=>{
+      y+=s.dy;
+      addEl(s.id,s.type,tx,y,{name:s.name,info:s.info,rotation:0});
+      if(si>0)addWire(seq[si-1].id,s.id,'power',1,0);
+    });
+    addWire(`${pre}ab`,'lv-bus','power',1,0);
+  }
+
+  // ── Low-voltage busbar ──
+  const lvBusY=TOP_Y+420;
+  const feedGap=Math.max(90,Math.min(130,500/nFeed));
+  const totalFW=(nFeed-1)*feedGap;
+  const lvBusLen=Math.max(380,totalFW+200);
+  addEl('lv-bus','busb',CX,lvBusY,{busLen:lvBusLen,name:`THANH CÁI ${lvKV}kV`,info:'',rotation:0});
+
+  // ── Feeders ──
+  const feedX0=CX-totalFW/2;
+  for(let i=0;i<nFeed;i++){
+    const fx=feedX0+i*feedGap;
+    const cid=`cb_f${i}`,lid=`ld${i}`;
+    addEl(cid,'cb',fx,lvBusY+65,{name:`CB${i+1}`,info:feeds[i],rotation:0});
+    addEl(lid,'load',fx,lvBusY+140,{name:feeds[i],info:'',rotation:0});
+    addWire('lv-bus',cid,'power',0,0);
+    addWire(cid,lid,'power',1,0);
+  }
+
+  S.zoom=0.82;S.px=0;S.py=0;
+  document.getElementById('zoom-box').textContent='82%';
+  draw();
+}
+
+function addEl(id,type,x,y,props={}){
+  S.els.push({id,type,x,y,...props});
+}
+function addWire(from,to,style,fp,tp){
+  S.wires.push({id:uid(),from,to,style:style||'power',fp:fp||0,tp:tp||0});
+}
+
+// ════════════════════════════════════════════════════════
+//  SAVE / LOAD PROJECT
+// ════════════════════════════════════════════════════════
+function saveProject(){
+  const proj={version:'2.1',TB:{...S.TB,img:null},els:S.els,wires:S.wires};
+  const b=new Blob([JSON.stringify(proj,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(b);
+  a.download=`SoDo_${S.TB.name||'TBA'}_${new Date().toLocaleDateString('vi-VN').replace(/\//g,'-')}.json`;
+  a.click();
+}
+function loadProject(inp){
+  const f=inp.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=ev=>{
+    try{
+      const p=JSON.parse(ev.target.result);
+      S.els=p.els||[];S.wires=p.wires||[];
+      S.TB={...S.TB,...(p.TB||{}),img:null};
+      syncTBInputs();S.sel.clear();pushHist();draw();
+    }catch(err){alert('Lỗi đọc file: '+err.message);}
+  };
+  r.readAsText(f);inp.value='';
+}
+
+// ════════════════════════════════════════════════════════
+//  EXPORT (PDF / PNG)
+// ════════════════════════════════════════════════════════
+function buildExportCanvas(){
+  const oc=document.createElement('canvas');
+  const sc=2;oc.width=PW*sc;oc.height=PH*sc;
+  const oc2=oc.getContext('2d');oc2.scale(sc,sc);
+  oc2.fillStyle='#fff';oc2.fillRect(0,0,PW,PH);
+  // grid
+  if(S.showGrid){
+    oc2.strokeStyle='#eee';oc2.lineWidth=0.5;
+    for(let x=0;x<PW;x+=GRID){oc2.beginPath();oc2.moveTo(x,0);oc2.lineTo(x,PH);oc2.stroke();}
+    for(let y=0;y<PH;y+=GRID){oc2.beginPath();oc2.moveTo(0,y);oc2.lineTo(PW,y);oc2.stroke();}
+  }
+  oc2.strokeStyle='#000';oc2.lineWidth=2;oc2.strokeRect(10,10,PW-20,PH-20);
+  oc2.lineWidth=1;oc2.strokeRect(15,15,PW-30,PH-30);
+  // figure out offset to center content
+  let mn={x:Infinity,y:Infinity},mx={x:-Infinity,y:-Infinity};
+  S.els.forEach(el=>{mn.x=Math.min(mn.x,el.x);mn.y=Math.min(mn.y,el.y);mx.x=Math.max(mx.x,el.x);mx.y=Math.max(mx.y,el.y);});
+  if(!S.els.length){drawTitleBlock(oc2,0,0);return oc;}
+  const cW=mx.x-mn.x,cH=mx.y-mn.y;
+  const sx=(PW-200)/Math.max(cW+100,1),sy=(PH-230)/Math.max(cH+100,1);
+  const scale=Math.min(sx,sy,1.3);
+  const offX=(PW-cW*scale)/2-mn.x*scale;
+  const offY=(PH-160-cH*scale)/2+30-mn.y*scale;
+  oc2.save();oc2.translate(offX,offY);oc2.scale(scale,scale);
+  // wires
+  S.wires.forEach(w=>{
+    const fe=S.els.find(e=>e.id===w.from);const te=S.els.find(e=>e.id===w.to);
+    if(!fe||!te)return;
+    const fp=getPort(fe,w.fp,te.x),tp=getPort(te,w.tp,fe.x);
+    const ws=WIRE_STYLE[w.style||'power'];
+    oc2.strokeStyle=ws.color;oc2.lineWidth=ws.w/scale;oc2.setLineDash(ws.dash);
+    oc2.beginPath();oc2.moveTo(fp.x,fp.y);drawOrtho(oc2,fp.x,fp.y,tp.x,tp.y);oc2.stroke();oc2.setLineDash([]);
+  });
+  // elements
+  S.els.forEach(el=>{
+    oc2.save();oc2.translate(el.x,el.y);
+    if(el.rotation)oc2.rotate(el.rotation*Math.PI/180);
+    oc2.strokeStyle='#111';oc2.fillStyle='#fff';oc2.lineWidth=1.5/scale;
+    drawSymOnCtx(oc2,el);oc2.restore();
+  });
+  oc2.restore();
+  drawTitleBlock(oc2,0,0);
+  return oc;
+}
+
+function drawSymOnCtx(ctx,el){
+  // re-use sym_* functions but they use CTX global — delegate via switch on context
+  ctx.strokeStyle='#111';ctx.fillStyle='#fff';ctx.lineWidth=1.5;
+  switch(el.type){
+    case'mba':sym_mba(ctx);break;case'cb':sym_cb(ctx);break;case'dcl':sym_dcl(ctx);break;
+    case'dpt':sym_dpt(ctx);break;case'fuse':sym_fuse(ctx);break;case'ct':sym_ct(ctx);break;
+    case'vt':sym_vt(ctx);break;case'la':sym_la(ctx);break;case'grnd':sym_grnd(ctx);break;
+    case'busb':sym_busb(ctx,el);break;case'load':sym_load(ctx);break;case'src':sym_src(ctx);break;
+    default:sym_def(ctx);
+  }
+  if(el.type!=='busb'){
+    const ed=ETYPES[el.type]||{w:40};
+    ctx.fillStyle='#111';ctx.font='bold 10px Arial';ctx.textAlign='left';ctx.textBaseline='middle';
+    if(el.name)ctx.fillText(el.name,ed.w/2+6,-7);
+    if(el.info){ctx.font='9px Arial';ctx.fillStyle='#555';ctx.fillText(el.info,ed.w/2+6,7);}
+    if(el.voltage){ctx.font='9px Arial';ctx.fillStyle='#1a5276';ctx.fillText(el.voltage,ed.w/2+6,19);}
+  }
+}
+
+function exportPNG(){
+  const oc=buildExportCanvas();
+  const a=document.createElement('a');
+  a.href=oc.toDataURL('image/png',1.0);
+  a.download=`SoDo_${S.TB.name||'TBA'}.png`;a.click();
+}
+function exportPDF(){
+  const oc=buildExportCanvas();
+  const{jsPDF}=window.jspdf;
+  const pdf=new jsPDF('l','mm','a4');
+  pdf.addImage(oc.toDataURL('image/png',1.0),'PNG',0,0,297,210);
+  pdf.save(`SoDo_${S.TB.name||'TBA'}_${new Date().toLocaleDateString('vi-VN').replace(/\//g,'-')}.pdf`);
+}
+
+// ════════════════════════════════════════════════════════
+//  SYMBOL GRID (sidebar preview icons)
+// ════════════════════════════════════════════════════════
+function buildSymGrid(){
+  const types=[
+    {t:'mba',l:'MBA'},{t:'cb',l:'MC/AB'},{t:'dcl',l:'DCL'},
+    {t:'dpt',l:'DPT'},{t:'fuse',l:'Cầu Chì'},{t:'ct',l:'TI/BI'},
+    {t:'vt',l:'TU/BU'},{t:'la',l:'CSV/LA'},{t:'grnd',l:'Tiếp Địa'},
+    {t:'busb',l:'Thanh Cái'},{t:'load',l:'Phụ Tải'},{t:'src',l:'Nguồn'},
+  ];
+  const g=document.getElementById('sgrid');
+  g.innerHTML=types.map(({t,l})=>`
+    <button class="sbtn" data-type="${t}" onclick="setTool('${t}')" title="${ETYPES[t]?.full||l}">
+      <canvas id="prv-${t}" width="34" height="34"></canvas>
+      <span>${l}</span>
+    </button>`).join('');
+  // Draw icons on mini canvases
+  types.forEach(({t})=>{
+    const c=document.getElementById(`prv-${t}`);if(!c)return;
+    const cx=c.getContext('2d');cx.clearRect(0,0,34,34);
+    cx.save();cx.translate(17,17);cx.strokeStyle='#0dcdc0';cx.fillStyle='#fff';cx.lineWidth=1.5;
+    const fake={type:t,busLen:28,name:''};
+    drawSymOnCtx(cx,fake);
+    cx.restore();
+  });
+}
+
+// ════════════════════════════════════════════════════════
+//  MODAL HELPERS
+// ════════════════════════════════════════════════════════
+function showModal(id){document.getElementById(id).classList.add('open');}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+
+// ════════════════════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════════════════════
+function init(){
+  buildSymGrid();
+  resizeCV();
+  // Start with initial viewport centered on paper
+  const wrap=document.getElementById('canvas-wrap');
+  S.px=(wrap.clientWidth-PW)/2;
+  S.py=(wrap.clientHeight-PH)/2;
+  pushHist();
+  draw();
+}
+init();
+</script>
+</body>
+</html>

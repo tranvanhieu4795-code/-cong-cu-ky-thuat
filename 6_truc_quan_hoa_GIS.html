@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GeoData Platform - Chuyển Đổi Số</title>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+
+    <style>
+        :root {
+            --primary: #0f172a; 
+            --secondary: #1e293b; 
+            --accent: #3b82f6; 
+            --accent-hover: #2563eb;
+            --text-light: #f8fafc;
+            --bg-body: #f1f5f9;
+            --danger: #ef4444;
+            --success: #10b981;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg-body);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Sidebar Giao diện tối */
+        .sidebar {
+            width: 400px;
+            background: var(--primary);
+            color: var(--text-light);
+            display: flex;
+            flex-direction: column;
+            box-shadow: 4px 0 15px rgba(0,0,0,0.2);
+            z-index: 1000;
+        }
+
+        .header {
+            padding: 20px;
+            background: var(--secondary);
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .header h1 {
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .header p { font-size: 0.85rem; color: #94a3b8; margin-top: 5px; }
+
+        .control-panel {
+            padding: 20px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        /* Form Components */
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; font-size: 0.85rem; margin-bottom: 8px; color: #cbd5e1; font-weight: 500;}
+        
+        .search-box { display: flex; gap: 8px; }
+        input[type="text"] {
+            flex: 1;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #334155;
+            background: var(--secondary);
+            color: white;
+            outline: none;
+        }
+        input[type="text"]:focus { border-color: var(--accent); }
+
+        button {
+            padding: 10px 15px;
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        button:hover { background: var(--accent-hover); }
+        button.btn-danger { background: var(--danger); padding: 5px 10px; font-size: 0.8rem;}
+        button.btn-danger:hover { background: #dc2626; }
+
+        /* Chọn Layer */
+        .layer-box {
+            background: var(--secondary);
+            padding: 12px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            border: 1px solid #334155;
+        }
+        .layer-box label { cursor: pointer; font-size: 0.85rem; display: flex; align-items: center; gap: 5px;}
+
+        /* Danh sách điểm */
+        .point-list-container {
+            background: var(--secondary);
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #334155;
+        }
+        .point-list {
+            list-style: none;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .point-item {
+            background: rgba(255,255,255,0.03);
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-left: 3px solid var(--accent);
+        }
+        .point-info { font-size: 0.8rem; }
+        .point-info span { display: block; color: #94a3b8; margin-top: 3px;}
+
+        /* Import / Export Grid */
+        .action-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+        .action-grid button { width: 100%; justify-content: center; font-size: 0.8rem; padding: 8px;}
+        
+        .file-upload {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+            width: 100%;
+        }
+        .file-upload input[type="file"] {
+            position: absolute;
+            font-size: 100px;
+            opacity: 0;
+            right: 0;
+            top: 0;
+            cursor: pointer;
+        }
+        .file-upload-btn {
+            background: var(--success);
+            width: 100%;
+            justify-content: center;
+        }
+        .file-upload-btn:hover { background: #059669; }
+
+        /* Bản đồ */
+        #map { flex: 1; height: 100%; z-index: 1; }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: var(--primary); }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+    </style>
+</head>
+
+<body>
+
+<div class="sidebar">
+    <div class="header">
+        <h1><i class="fa-solid fa-satellite"></i> GeoData Platform</h1>
+        <p>Hệ thống thu thập & chuyển đổi dữ liệu GIS</p>
+    </div>
+
+    <div class="control-panel">
+        <div class="form-group">
+            <div class="search-box">
+                <input type="text" id="search" placeholder="Nhập địa điểm hoặc tọa độ...">
+                <button onclick="searchLocation()"><i class="fa-solid fa-magnifying-glass"></i></button>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label><i class="fa-solid fa-layer-group"></i> Bản đồ nền</label>
+            <div class="layer-box">
+                <label><input type="radio" name="layer" value="satellite" checked onchange="changeLayer()"> 🛰️ Vệ tinh</label>
+                <label><input type="radio" name="layer" value="hybrid" onchange="changeLayer()"> 🧭 Hybrid</label>
+                <label><input type="radio" name="layer" value="map" onchange="changeLayer()"> 🗺️ Đường phố</label>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label><i class="fa-solid fa-file-import"></i> Nhập dữ liệu (KML / KMZ)</label>
+            <div class="file-upload">
+                <button class="file-upload-btn"><i class="fa-solid fa-upload"></i> Chọn File Tải Lên</button>
+                <input type="file" id="fileInput" accept=".kml,.kmz" onchange="handleFileUpload(event)">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label><i class="fa-solid fa-location-dot"></i> Danh sách điểm (<span id="pointCount" style="color: var(--accent);">0</span>)</label>
+            <div class="point-list-container">
+                <ul class="point-list" id="pointListUI">
+                    </ul>
+            </div>
+            <button class="btn-danger" style="width: 100%; justify-content: center; padding: 10px;" onclick="clearAllPoints()">
+                <i class="fa-solid fa-trash"></i> Xóa toàn bộ điểm
+            </button>
+        </div>
+
+        <div class="form-group">
+            <label><i class="fa-solid fa-file-export"></i> Xuất dữ liệu</label>
+            <div class="action-grid">
+                <button onclick="exportCSV()"><i class="fa-solid fa-file-csv"></i> CSV</button>
+                <button onclick="exportXLSX()"><i class="fa-solid fa-file-excel"></i> XLSX</button>
+                <button onclick="exportGeoJSON()"><i class="fa-solid fa-code"></i> GeoJSON</button>
+                <button onclick="exportKML()"><i class="fa-solid fa-map-location-dot"></i> KML</button>
+                <button onclick="exportKMZ()"><i class="fa-solid fa-file-zipper"></i> KMZ</button>
+                <button onclick="exportGPX()"><i class="fa-solid fa-route"></i> GPX</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+<script>
+    // ===== KHỞI TẠO BẢN ĐỒ =====
+    let map = L.map('map').setView([16.0470, 108.2062], 6); // Focus Vietnam
+    let points = []; 
+    let markers = {}; 
+    let pointCounter = 0;
+
+    // Các lớp bản đồ - Dùng nguồn Google / OSM chuẩn để loại bỏ chữ lạ
+    let mapLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
+
+    // Google Satellite thuần (Không nhãn mác, không chữ)
+    let satelliteLayer = L.tileLayer('http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',{
+        maxZoom: 20, subdomains:['mt0','mt1','mt2','mt3']
+    });
+
+    // Google Hybrid (Vệ tinh + Tên đường tiếng Việt hl=vi)
+    let hybridLayer = L.tileLayer('http://{s}.google.com/vt/lyrs=y&hl=vi&x={x}&y={y}&z={z}',{
+        maxZoom: 20, subdomains:['mt0','mt1','mt2','mt3']
+    });
+
+    // Mặc định là Satellite (Vệ tinh)
+    satelliteLayer.addTo(map);
+
+    // ===== CHUYỂN ĐỔI LAYER =====
+    function changeLayer() {
+        let selected = document.querySelector('input[name="layer"]:checked').value;
+        map.eachLayer(layer => {
+            if (layer instanceof L.TileLayer) map.removeLayer(layer);
+        });
+        if (selected === "map") mapLayer.addTo(map);
+        if (selected === "satellite") satelliteLayer.addTo(map);
+        if (selected === "hybrid") hybridLayer.addTo(map);
+    }
+
+    // ===== CLICK BẢN ĐỒ =====
+    map.on('click', function(e) {
+        addPoint(e.latlng.lat, e.latlng.lng);
+    });
+
+    // ===== THÊM & QUẢN LÝ ĐIỂM =====
+    function addPoint(lat, lng, customName = null) {
+        pointCounter++;
+        let id = 'pt_' + Date.now() + Math.floor(Math.random() * 1000);
+        let name = customName || "Điểm " + pointCounter;
+
+        let marker = L.marker([lat, lng]).addTo(map);
+        marker.bindPopup(`<b>${name}</b><br>Lat: ${lat.toFixed(6)}<br>Lng: ${lng.toFixed(6)}`).openPopup();
+        
+        points.push({ id: id, name: name, lat: lat, lng: lng });
+        markers[id] = marker;
+        renderPointList();
+    }
+
+    function removePoint(id) {
+        map.removeLayer(markers[id]);
+        delete markers[id];
+        points = points.filter(p => p.id !== id);
+        renderPointList();
+    }
+
+    function clearAllPoints() {
+        if(!confirm("Hệ thống sẽ xóa toàn bộ dữ liệu điểm hiện tại. Tiếp tục?")) return;
+        Object.values(markers).forEach(m => map.removeLayer(m));
+        markers = {}; points = []; pointCounter = 0;
+        renderPointList();
+    }
+
+    function renderPointList() {
+        let listUI = document.getElementById("pointListUI");
+        listUI.innerHTML = "";
+        document.getElementById("pointCount").innerText = points.length;
+
+        points.forEach(pt => {
+            let li = document.createElement("li");
+            li.className = "point-item";
+            li.innerHTML = `
+                <div class="point-info">
+                    <b>${pt.name}</b>
+                    <span>${pt.lat.toFixed(5)}, ${pt.lng.toFixed(5)}</span>
+                </div>
+                <button class="btn-danger" onclick="removePoint('${pt.id}')"><i class="fa-solid fa-xmark"></i></button>
+            `;
+            listUI.appendChild(li);
+        });
+    }
+
+    // ===== TÌM KIẾM =====
+    function searchLocation() {
+        let q = document.getElementById("search").value;
+        if(!q) return;
+        fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${q}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.length > 0) {
+                    let lat = parseFloat(data[0].lat);
+                    let lon = parseFloat(data[0].lon);
+                    map.setView([lat, lon], 15);
+                    addPoint(lat, lon, data[0].name || "Điểm tìm kiếm");
+                } else alert("Không tìm thấy địa điểm trên máy chủ!");
+            });
+    }
+
+    // ===== NHẬP KML / KMZ =====
+    async function handleFileUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const name = file.name.toLowerCase();
+        try {
+            if (name.endsWith('.kml')) {
+                parseKML(await file.text());
+            } else if (name.endsWith('.kmz')) {
+                const zip = await JSZip.loadAsync(await file.arrayBuffer());
+                const kmlFile = Object.values(zip.files).find(f => f.name.endsWith('.kml'));
+                if (kmlFile) parseKML(await kmlFile.async('string'));
+                else alert("Định dạng KMZ không chứa file KML hợp lệ.");
+            } else {
+                alert("Vui lòng chọn file định dạng KML hoặc KMZ.");
+            }
+        } catch (error) { alert("Lỗi đọc file: " + error.message); }
+        event.target.value = ""; 
+    }
+
+    function parseKML(kmlText) {
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(kmlText, "text/xml");
+        const coordinates = xmlDoc.getElementsByTagName("coordinates");
+        
+        let count = 0;
+        for (let i = 0; i < coordinates.length; i++) {
+            let coordsArr = coordinates[i].textContent.trim().split(/\s+/);
+            coordsArr.forEach(c => {
+                let parts = c.split(',');
+                if (parts.length >= 2) {
+                    let lng = parseFloat(parts[0]), lat = parseFloat(parts[1]);
+                    if (!isNaN(lat) && !isNaN(lng)) { addPoint(lat, lng); count++; }
+                }
+            });
+        }
+        if(count > 0 && points.length > 0) {
+            map.setView([points[points.length-1].lat, points[points.length-1].lng], 12);
+            alert(`Nhập dữ liệu thành công: Đã trích xuất ${count} điểm!`);
+        } else alert("Không tìm thấy tọa độ hợp lệ.");
+    }
+
+    // ===== XUẤT DỮ LIỆU TỔNG HỢP =====
+    function checkData() {
+        if(points.length === 0) { alert("Dữ liệu trống! Vui lòng tích điểm trên bản đồ trước khi xuất."); return false; }
+        return true;
+    }
+
+    function downloadFile(content, filename, mimeType) {
+        let blob = new Blob([content], { type: mimeType });
+        let url = URL.createObjectURL(blob);
+        let link = document.createElement("a");
+        link.href = url; link.download = filename;
+        document.body.appendChild(link); link.click(); document.body.removeChild(link);
+    }
+
+    // 1. CSV
+    function exportCSV() {
+        if(!checkData()) return;
+        let csv = "\uFEFFTen,Vi_do,Kinh_do\n" + points.map(e => `${e.name},${e.lat},${e.lng}`).join("\n");
+        downloadFile(csv, "GeoData_Export.csv", "text/csv;charset=utf-8;");
+    }
+
+    // 2. XLSX (Excel)
+    function exportXLSX() {
+        if(!checkData()) return;
+        let ws = XLSX.utils.json_to_sheet(points.map(p => ({ "Tên Điểm": p.name, "Vĩ độ": p.lat, "Kinh độ": p.lng })));
+        let wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "ToaDo");
+        XLSX.writeFile(wb, "GeoData_Export.xlsx");
+    }
+
+    // 3. GeoJSON
+    function exportGeoJSON() {
+        if(!checkData()) return;
+        let geojson = {
+            "type": "FeatureCollection",
+            "features": points.map(p => ({
+                "type": "Feature",
+                "properties": { "name": p.name },
+                "geometry": { "type": "Point", "coordinates": [p.lng, p.lat] }
+            }))
+        };
+        downloadFile(JSON.stringify(geojson, null, 2), "GeoData_Export.geojson", "application/json");
+    }
+
+    // 4. KML String Generator
+    function generateKML() {
+        let kml = `<?xml version="1.0" encoding="UTF-8"?>\n<kml xmlns="http://www.opengis.net/kml/2.2">\n  <Document>\n    <name>GeoData Export</name>\n`;
+        points.forEach(pt => {
+            kml += `    <Placemark>\n      <name>${pt.name}</name>\n      <Point><coordinates>${pt.lng},${pt.lat},0</coordinates></Point>\n    </Placemark>\n`;
+        });
+        kml += `  </Document>\n</kml>`;
+        return kml;
+    }
+
+    // 5. KML
+    function exportKML() {
+        if(!checkData()) return;
+        downloadFile(generateKML(), "GeoData_Export.kml", "application/vnd.google-earth.kml+xml");
+    }
+
+    // 6. KMZ
+    async function exportKMZ() {
+        if(!checkData()) return;
+        let zip = new JSZip();
+        zip.file("doc.kml", generateKML());
+        let content = await zip.generateAsync({type:"blob"});
+        let url = URL.createObjectURL(content);
+        let link = document.createElement("a");
+        link.href = url; link.download = "GeoData_Export.kmz"; link.click();
+    }
+
+    // 7. GPX
+    function exportGPX() {
+        if(!checkData()) return;
+        let gpx = `<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="GeoDataPlatform" xmlns="http://www.topografix.com/GPX/1/1">\n`;
+        points.forEach(p => {
+            gpx += `  <wpt lat="${p.lat}" lon="${p.lng}">\n    <name>${p.name}</name>\n  </wpt>\n`;
+        });
+        gpx += `</gpx>`;
+        downloadFile(gpx, "GeoData_Export.gpx", "application/gpx+xml");
+    }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chuyển đổi tọa độ DMS → DD</title>
+  <style>
+    :root{
+      --primary:#0056b3;--primary-d:#004494;
+      --success:#1a7f4b;--success-d:#156b3d;
+      --bg:#f0f4f8;--card:#fff;--text:#1e293b;--muted:#64748b;
+      --border:#cbd5e1;--radius:10px;
+    }
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:2rem 1rem;}
+    .wrap{max-width:860px;margin:0 auto;}
+    h1{text-align:center;color:var(--primary);font-size:1.6rem;font-weight:700;margin-bottom:.3rem;}
+    .subtitle{text-align:center;color:var(--muted);font-size:.9rem;margin-bottom:1.8rem;}
+    .card{background:var(--card);border-radius:var(--radius);padding:1.6rem;box-shadow:0 2px 12px rgba(0,0,0,.08);margin-bottom:1.2rem;}
+    label{display:block;font-weight:600;font-size:.85rem;color:var(--muted);margin-bottom:.4rem;text-transform:uppercase;letter-spacing:.5px;}
+    textarea{
+      width:100%;padding:.9rem 1rem;border:1.5px solid var(--border);border-radius:var(--radius);
+      font-family:'Consolas','Courier New',monospace;font-size:13.5px;resize:vertical;
+      height:150px;transition:border-color .2s;outline:none;color:var(--text);line-height:1.6;
+    }
+    textarea:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(0,86,179,.1);}
+    .examples{margin-bottom:.8rem;}
+    .examples span{
+      display:inline-block;background:#e8f0fe;color:var(--primary);padding:3px 10px;
+      border-radius:20px;font-size:11.5px;margin:2px 3px 2px 0;cursor:pointer;
+      border:1px solid #c7d9f5;transition:all .15s;font-family:'Consolas',monospace;
+    }
+    .examples span:hover{background:#c7d9f5;}
+    .btn-row{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:1.2rem;}
+    button{
+      padding:.55rem 1.2rem;border:none;border-radius:var(--radius);font-weight:600;font-size:14px;
+      cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:6px;
+    }
+    .btn-primary{background:var(--primary);color:#fff;}
+    .btn-primary:hover{background:var(--primary-d);transform:translateY(-1px);}
+    .btn-success{background:var(--success);color:#fff;}
+    .btn-success:hover{background:var(--success-d);transform:translateY(-1px);}
+    .btn-outline{background:#fff;border:1.5px solid var(--border);color:var(--muted);}
+    .btn-outline:hover{border-color:var(--primary);color:var(--primary);}
+    .output-box{
+      background:#f8fafc;border:1.5px solid var(--border);border-radius:var(--radius);
+      padding:1rem;min-height:120px;font-family:'Consolas','Courier New',monospace;
+      font-size:13.5px;white-space:pre-line;overflow-y:auto;max-height:280px;line-height:1.6;
+    }
+    .empty{color:#b0bec5;font-style:italic;font-size:13px;}
+    .stat-bar{
+      display:flex;gap:16px;flex-wrap:wrap;padding:.7rem 1rem;
+      background:#f1f5f9;border-radius:8px;margin-bottom:.8rem;font-size:13px;
+    }
+    .stat-bar span{color:var(--muted);}
+    .stat-bar b{color:var(--primary);}
+    .export-card{border:1.5px solid var(--border);}
+    .export-row{display:flex;flex-wrap:wrap;align-items:center;gap:12px;}
+    .export-row h3{font-size:1rem;color:var(--primary);font-weight:700;}
+    select{
+      padding:.5rem .8rem;border:1.5px solid var(--border);border-radius:var(--radius);
+      font-size:13.5px;background:#fff;cursor:pointer;outline:none;color:var(--text);
+    }
+    select:focus{border-color:var(--primary);}
+    .toast{
+      position:fixed;bottom:24px;right:24px;background:#1e293b;color:#fff;
+      padding:10px 20px;border-radius:8px;font-size:13px;opacity:0;
+      transition:opacity .3s;pointer-events:none;z-index:999;
+    }
+    .toast.show{opacity:1;}
+    .format-hint{font-size:11.5px;color:var(--muted);margin-top:.5rem;}
+    @media(max-width:600px){.btn-row{flex-direction:column;}.export-row{flex-direction:column;align-items:flex-start;}}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <h1>📍 Chuyển đổi tọa độ DMS → DD</h1>
+  <p class="subtitle">Chuyển đổi hàng loạt từ độ-phút-giây sang thập phân (Decimal Degrees)</p>
+
+  <div class="card">
+    <label>Nhập tọa độ DMS (mỗi điểm một dòng)</label>
+    <div class="examples">
+      Ví dụ:
+      <span onclick="insertExample('10°30\'30\'\' N, 106°40\'15\'\' E')">10°30'30'' N, 106°40'15'' E</span>
+      <span onclick="insertExample('14 30 45.6 N, 108 12 33.2 E')">14 30 45.6 N, 108 12 33.2 E</span>
+      <span onclick="insertExample('21°2\'9.5\'\' N, 105°50\'6.7\'\' E')">21°2'9.5'' N, 105°50'6.7'' E</span>
+    </div>
+    <textarea id="inputArea" placeholder="Nhập tọa độ DMS tại đây...&#10;Ví dụ: 10°30'30'' N, 106°40'15'' E&#10;Hoặc: 14 30 45.6 N, 108 12 33.2 E"></textarea>
+    <p class="format-hint">Hỗ trợ các dạng: °/'/'' hoặc khoảng trắng làm phân cách, ký hiệu N/S/E/W.</p>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn-primary" onclick="convert()">⇄ Chuyển đổi</button>
+    <button class="btn-success" onclick="copyResult()">📋 Sao chép</button>
+    <button class="btn-outline" onclick="clearAll()">🗑 Xóa</button>
+    <button class="btn-outline" onclick="swapDD()">↕ DD → DMS</button>
+  </div>
+
+  <div class="card">
+    <label>Kết quả Decimal Degrees (DD)</label>
+    <div class="stat-bar" id="statBar" style="display:none">
+      <span>✅ Thành công: <b id="okCount">0</b></span>
+      <span>❌ Lỗi: <b id="errCount">0</b></span>
+    </div>
+    <div class="output-box" id="outputBox"><span class="empty">Kết quả sẽ hiển thị tại đây...</span></div>
+  </div>
+
+  <div class="card export-card">
+    <div class="export-row">
+      <h3>⬇ Xuất dữ liệu</h3>
+      <select id="format">
+        <option value="txt">Văn bản (.TXT)</option>
+        <option value="csv">Bảng tính (.CSV)</option>
+        <option value="geojson">Bản đồ GeoJSON</option>
+        <option value="gpx">Định tuyến (.GPX)</option>
+        <option value="kml">Google Earth (.KML)</option>
+        <option value="wkt">Định dạng WKT</option>
+      </select>
+      <button class="btn-primary" onclick="download()">⬇ Tải xuống</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let resultData = [];
+
+function showToast(msg, dur=2000){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),dur);
+}
+
+function dmsToDd(d,m,s,dir){
+  let dd=parseFloat(d)+parseFloat(m)/60+parseFloat(s)/3600;
+  if(dir==='S'||dir==='W') dd*=-1;
+  return Number(dd.toFixed(7));
+}
+
+function parseLine(line){
+  // Flexible regex: handles °, ', '', and whitespace as separators
+  const r=/(\d+(?:\.\d+)?)[°\s]+(\d+(?:\.\d+)?)['\s]+(\d+(?:\.\d+)?)["''`\s]*([NSEWnsew])/g;
+  const m=[...line.matchAll(r)];
+  if(m.length>=2){
+    return{
+      lat:dmsToDd(m[0][1],m[0][2],m[0][3],m[0][4].toUpperCase()),
+      lon:dmsToDd(m[1][1],m[1][2],m[1][3],m[1][4].toUpperCase())
+    };
+  }
+  return null;
+}
+
+function convert(){
+  resultData=[];
+  const lines=document.getElementById('inputArea').value.split('\n');
+  const errors=[];
+  lines.forEach((l,i)=>{
+    if(!l.trim()) return;
+    const p=parseLine(l);
+    if(p) resultData.push(p);
+    else if(l.trim()) errors.push({line:i+1,text:l.trim()});
+  });
+
+  const box=document.getElementById('outputBox');
+  const stat=document.getElementById('statBar');
+  if(resultData.length>0){
+    box.innerHTML=resultData.map((p,i)=>`<span style="color:#64748b;font-size:12px;">${String(i+1).padStart(3,' ')}. </span>${p.lat.toFixed(6)}, ${p.lon.toFixed(6)}`).join('\n');
+    stat.style.display='flex';
+    document.getElementById('okCount').textContent=resultData.length;
+    document.getElementById('errCount').textContent=errors.length;
+  } else {
+    box.innerHTML='<span class="empty">Không tìm thấy định dạng tọa độ hợp lệ. Kiểm tra lại cú pháp.</span>';
+    stat.style.display='none';
+  }
+  if(errors.length>0) showToast(`⚠️ ${errors.length} dòng không hợp lệ (xem console)`,3000);
+}
+
+function copyResult(){
+  if(resultData.length===0){showToast('Chưa có dữ liệu!');return;}
+  const text=resultData.map(p=>`${p.lat.toFixed(6)}, ${p.lon.toFixed(6)}`).join('\n');
+  navigator.clipboard.writeText(text)
+    .then(()=>showToast('✅ Đã sao chép!'))
+    .catch(()=>{
+      const ta=document.createElement('textarea');
+      ta.value=text;document.body.appendChild(ta);ta.select();
+      document.execCommand('copy');document.body.removeChild(ta);
+      showToast('✅ Đã sao chép!');
+    });
+}
+
+function clearAll(){
+  document.getElementById('inputArea').value='';
+  document.getElementById('outputBox').innerHTML='<span class="empty">Kết quả sẽ hiển thị tại đây...</span>';
+  document.getElementById('statBar').style.display='none';
+  resultData=[];
+}
+
+// Simple DD → DMS (utility bonus)
+function ddToDMS(dd, isLat){
+  const abs=Math.abs(dd);
+  const d=Math.floor(abs);
+  const mFull=(abs-d)*60;
+  const m=Math.floor(mFull);
+  const s=((mFull-m)*60).toFixed(2);
+  const dir=dd>=0?(isLat?'N':'E'):(isLat?'S':'W');
+  return `${d}°${m}'${s}'' ${dir}`;
+}
+
+function swapDD(){
+  const text=document.getElementById('inputArea').value.trim();
+  if(!text){showToast('Chưa có dữ liệu để đổi');return;}
+  // Try to parse DD format: lat, lon per line
+  const lines=text.split('\n');
+  const out=[];
+  let converted=0;
+  lines.forEach(l=>{
+    if(!l.trim()) return;
+    const parts=l.split(/[,\s]+/).map(Number).filter(n=>!isNaN(n));
+    if(parts.length>=2){
+      out.push(`${ddToDMS(parts[0],true)}, ${ddToDMS(parts[1],false)}`);
+      converted++;
+    }
+  });
+  if(converted>0){
+    document.getElementById('inputArea').value=out.join('\n');
+    showToast(`↕ Đã đổi ${converted} dòng DD → DMS`);
+  } else showToast('Không nhận dạng được định dạng DD');
+}
+
+function insertExample(txt){
+  const ta=document.getElementById('inputArea');
+  if(ta.value&&!ta.value.endsWith('\n')) ta.value+='\n';
+  ta.value+=txt;
+}
+
+function download(){
+  if(resultData.length===0){showToast('Hãy chuyển đổi trước!');return;}
+  const f=document.getElementById('format').value;
+  let content='',mime='text/plain',ext=f;
+
+  if(f==='txt') content=resultData.map(p=>`${p.lat} ${p.lon}`).join('\n');
+  if(f==='csv'){
+    content='latitude,longitude\n'+resultData.map(p=>`${p.lat},${p.lon}`).join('\n');
+    mime='text/csv';
+  }
+  if(f==='geojson'){
+    content=JSON.stringify({type:'FeatureCollection',features:resultData.map((p,i)=>({
+      type:'Feature',properties:{id:i+1},
+      geometry:{type:'Point',coordinates:[p.lon,p.lat]}
+    }))},null,2);
+    mime='application/json'; ext='geojson';
+  }
+  if(f==='gpx'){
+    content=`<?xml version="1.0"?>\n<gpx version="1.1" creator="DMS Converter" xmlns="http://www.topografix.com/GPX/1/1">\n`
+      +resultData.map((p,i)=>`  <wpt lat="${p.lat}" lon="${p.lon}">\n    <name>Point ${i+1}</name>\n  </wpt>`).join('\n')
+      +'\n</gpx>';
+    mime='application/gpx+xml';
+  }
+  if(f==='kml'){
+    content=`<?xml version="1.0"?>\n<kml xmlns="http://www.opengis.net/kml/2.2">\n<Document>\n`
+      +resultData.map((p,i)=>`  <Placemark>\n    <name>Point ${i+1}</name>\n    <Point><coordinates>${p.lon},${p.lat},0</coordinates></Point>\n  </Placemark>`).join('\n')
+      +'\n</Document>\n</kml>';
+    mime='application/vnd.google-earth.kml+xml';
+  }
+  if(f==='wkt') content=resultData.map(p=>`POINT(${p.lon} ${p.lat})`).join('\n');
+
+  const blob=new Blob([content],{type:mime});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`toa_do.${ext}`;
+  document.body.appendChild(a); a.click();
+  setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(a.href);},100);
+  showToast(`✅ Đã tải: toa_do.${ext}`);
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bộ Công Cụ Kỹ Thuật</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:        #111318;
+  --bg2:       #181c24;
+  --card:      #1e222e;
+  --card-h:    #252a38;
+  --border:    rgba(168,230,207,0.12);
+  --border-h:  rgba(168,230,207,0.35);
+  --accent:    #a8e6cf;
+  --accent2:   #7ecfb0;
+  --accent-glow: rgba(168,230,207,0.18);
+  --text:      #eef2f7;
+  --muted:     #7a8599;
+  --muted2:    #4a5568;
+  --badge-bg:  rgba(168,230,207,0.1);
+  --radius:    14px;
+  --font:      'Be Vietnam Pro', sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+body::before {
+  content:'';
+  position:fixed; inset:0;
+  background-image:
+    linear-gradient(rgba(168,230,207,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(168,230,207,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events:none; z-index:0;
+}
+
+.wrapper { position:relative; z-index:1; }
+
+/* === HEADER === */
+header {
+  background: linear-gradient(180deg, #0d1018 0%, var(--bg) 100%);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+  position: sticky; top:0; z-index: 100;
+  backdrop-filter: blur(20px);
+}
+.header-inner {
+  max-width: 1400px; margin: 0 auto;
+  height: 68px;
+  display: flex; align-items: center; gap: 20px;
+}
+.logo {
+  display: flex; align-items: center; gap: 12px;
+  text-decoration: none; flex-shrink: 0;
+}
+.logo-icon {
+  width: 42px; height: 42px;
+  background: #2a2a2e; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 0 20px rgba(168,230,207,0.3);
+}
+.logo-text { line-height: 1.2; }
+.logo-text strong { font-size: 15px; font-weight: 800; color: var(--accent); letter-spacing: -.3px; }
+.logo-text span { display: block; font-size: 10px; color: var(--muted); font-weight: 500; letter-spacing: .5px; text-transform: uppercase; }
+
+.search-wrap { flex: 1; max-width: 520px; position: relative; }
+.search-wrap svg { position:absolute; left:14px; top:50%; transform:translateY(-50%); color: var(--muted); pointer-events:none; }
+.search-input {
+  width:100%; padding: 10px 14px 10px 42px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--border); border-radius: 10px;
+  color: var(--text); font-family: var(--font); font-size: 14px;
+  outline: none; transition: all .2s;
+}
+.search-input:focus { border-color: var(--accent); background: rgba(168,230,207,0.06); box-shadow: 0 0 0 3px rgba(168,230,207,0.1); }
+.search-input::placeholder { color: var(--muted); }
+
+.sort-select {
+  padding: 10px 14px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--border); border-radius: 10px;
+  color: var(--text); font-family: var(--font); font-size: 13px;
+  outline: none; cursor: pointer; transition: border .2s;
+}
+.sort-select:focus, .sort-select:hover { border-color: var(--accent); }
+
+/* === HERO === */
+.hero {
+  max-width: 1400px; margin: 0 auto;
+  padding: 36px 24px 24px;
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 20px;
+}
+.hero-left h1 {
+  font-size: clamp(20px, 3vw, 28px); font-weight: 800; letter-spacing: -.5px;
+  background: linear-gradient(135deg, #fff 30%, var(--accent));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+.hero-left p { color: var(--muted); font-size: 14px; margin-top: 5px; }
+
+.stats-row { display: flex; gap: 24px; }
+.stat-item { text-align: center; padding: 12px 20px; background: var(--card); border: 1px solid var(--border); border-radius: 12px; }
+.stat-num { font-size: 22px; font-weight: 800; color: var(--accent); }
+.stat-lbl { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-top: 2px; }
+
+/* === CATEGORY TABS === */
+.cats { max-width: 1400px; margin: 0 auto; padding: 0 24px 20px; display: flex; gap: 8px; flex-wrap: wrap; }
+.cat-btn {
+  padding: 7px 16px; background: var(--card); border: 1px solid var(--border); border-radius: 20px;
+  color: var(--muted); font-family: var(--font); font-size: 12px; font-weight: 600;
+  cursor: pointer; transition: all .2s; letter-spacing: .3px;
+}
+.cat-btn:hover { border-color: var(--accent); color: var(--accent); }
+.cat-btn.active { background: var(--accent); color: #111318; border-color: var(--accent); box-shadow: 0 4px 16px rgba(168,230,207,0.3); }
+
+/* === GRID === */
+.grid {
+  max-width: 1400px; margin: 0 auto;
+  padding: 0 24px 60px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+  gap: 18px;
+}
+
+/* === CARD — dùng thẻ <a> thật để không bị chặn popup === */
+.card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 22px;
+  display: flex; flex-direction: column;
+  cursor: pointer; transition: all .25s;
+  position: relative; overflow: hidden;
+  text-decoration: none; color: inherit; /* reset <a> */
+}
+.card::before {
+  content:''; position:absolute; inset:0;
+  background: radial-gradient(circle at 20% 20%, var(--accent-glow), transparent 60%);
+  opacity:0; transition: opacity .3s; pointer-events:none;
+}
+.card:hover { border-color: var(--border-h); transform: translateY(-3px); box-shadow: 0 12px 40px rgba(0,0,0,.5); background: var(--card-h); }
+.card:hover::before { opacity: 1; }
+
+.card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
+.card-icon {
+  width: 52px; height: 52px; background: #2a2e3a; border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid rgba(168,230,207,0.15); transition: all .25s; flex-shrink: 0;
+}
+.card:hover .card-icon { background: rgba(168,230,207,0.12); border-color: rgba(168,230,207,0.4); box-shadow: 0 0 20px rgba(168,230,207,0.2); }
+.card-icon svg { color: var(--accent); }
+
+.card-cat-badge {
+  font-size: 10px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase;
+  padding: 3px 8px; border-radius: 20px;
+  background: var(--badge-bg); color: var(--accent); border: 1px solid rgba(168,230,207,0.2);
+}
+
+.card-name { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 6px; line-height: 1.35; }
+.card-desc { font-size: 12.5px; color: var(--muted); line-height: 1.6; flex: 1; }
+
+.card-footer {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border);
+}
+.visit-count { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--muted); font-weight: 500; }
+.visit-count svg { color: var(--muted2); }
+.visit-num { color: var(--accent); font-weight: 700; }
+
+/* Nút chỉ để hiển thị, <a> cha đã xử lý click */
+.btn-access {
+  padding: 7px 18px;
+  background: transparent; border: 1px solid rgba(168,230,207,0.35);
+  border-radius: 8px; color: var(--accent);
+  font-family: var(--font); font-size: 12px; font-weight: 700;
+  letter-spacing: .3px; transition: all .2s;
+  pointer-events: none;
+}
+.card:hover .btn-access { background: var(--accent); color: #111318; box-shadow: 0 4px 14px rgba(168,230,207,0.3); }
+
+/* === LIVE PULSE === */
+.live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); display: inline-block; animation: pulse 2s ease-in-out infinite; margin-right: 5px; }
+@keyframes pulse { 0%, 100% { opacity:1; transform:scale(1); } 50% { opacity:.4; transform:scale(1.4); } }
+
+/* === TOTAL BANNER === */
+.total-banner { max-width:1400px; margin:0 auto; padding:0 24px 18px; }
+.total-inner {
+  background: linear-gradient(135deg, rgba(168,230,207,0.08), rgba(168,230,207,0.04));
+  border: 1px solid rgba(168,230,207,0.2); border-radius: 12px;
+  padding: 14px 20px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+}
+.total-inner .tlabel { font-size: 13px; color: var(--muted); font-weight: 500; }
+.total-inner .tnum { font-size: 26px; font-weight: 800; color: var(--accent); font-variant-numeric: tabular-nums; }
+.total-inner .tdesc { font-size: 11px; color: var(--muted2); }
+
+/* === EMPTY === */
+.empty-msg { grid-column: 1/-1; text-align: center; padding: 60px 20px; color: var(--muted); font-size: 15px; }
+
+/* === TOAST === */
+.toast {
+  position:fixed; bottom:24px; right:24px;
+  background: var(--card); border: 1px solid var(--accent);
+  color: var(--accent); padding: 10px 20px; border-radius: 10px;
+  font-size: 13px; font-weight: 600;
+  opacity:0; transform:translateY(10px); transition: all .3s;
+  pointer-events:none; z-index:999; box-shadow: 0 8px 30px rgba(0,0,0,.4);
+}
+.toast.show { opacity:1; transform:translateY(0); }
+
+@media(max-width:768px){
+  .hero { padding: 20px 16px 16px; }
+  .grid { padding: 0 16px 40px; grid-template-columns:1fr; }
+  .cats { padding: 0 16px 16px; }
+  .stats-row { gap:12px; }
+  .stat-item { padding:10px 14px; }
+  .sort-select { display:none; }
+  .total-banner { padding:0 16px 14px; }
+}
+
+@keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:none} }
+.card { animation: fadeUp .4s ease both; }
+</style>
+</head>
+<body>
+<div class="wrapper">
+
+<!-- HEADER -->
+<header>
+  <div class="header-inner">
+    <a class="logo" href="#">
+      <div class="logo-icon">
+        <svg width="26" height="26" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <ellipse cx="50" cy="50" rx="38" ry="14" stroke="#a8e6cf" stroke-width="5.5" fill="none"/>
+          <ellipse cx="50" cy="50" rx="38" ry="14" stroke="#a8e6cf" stroke-width="5.5" fill="none" transform="rotate(60 50 50)"/>
+          <ellipse cx="50" cy="50" rx="38" ry="14" stroke="#a8e6cf" stroke-width="5.5" fill="none" transform="rotate(120 50 50)"/>
+          <circle cx="50" cy="50" r="7" fill="#a8e6cf"/>
+          <circle cx="50" cy="12" r="5" fill="#a8e6cf"/>
+          <circle cx="17" cy="69" r="5" fill="#a8e6cf"/>
+          <circle cx="83" cy="69" r="5" fill="#a8e6cf"/>
+        </svg>
+      </div>
+      <div class="logo-text">
+        <strong>TechTools</strong>
+        <span>Bộ Công Cụ Hỗ Trợ Công Việc</span>
+      </div>
+    </a>
+
+    <div class="search-wrap">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      <input class="search-input" id="searchInput" type="text" placeholder="Tìm kiếm công cụ, tiện ích..." oninput="filterTools()">
+    </div>
+
+    <select class="sort-select" id="sortSelect" onchange="filterTools()">
+      <option value="default">Mặc định</option>
+      <option value="popular">Phổ biến nhất</option>
+      <option value="az">A → Z</option>
+    </select>
+  </div>
+</header>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-left">
+    <h1>Bộ Công Cụ Hỗ Trợ Công Việc</h1>
+    <p><span class="live-dot"></span>Thống kê lượt truy cập thời gian thực — lưu tự động</p>
+  </div>
+  <div class="stats-row">
+    <div class="stat-item"><div class="stat-num" id="totalTools">12</div><div class="stat-lbl">Công cụ</div></div>
+    <div class="stat-item"><div class="stat-num" id="totalVisits">0</div><div class="stat-lbl">Tổng lượt dùng</div></div>
+    <div class="stat-item"><div class="stat-num" id="todayVisits">0</div><div class="stat-lbl">Hôm nay</div></div>
+  </div>
+</div>
+
+<!-- TOTAL BANNER -->
+<div class="total-banner">
+  <div class="total-inner">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#a8e6cf" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+    <div>
+      <div class="tlabel">Tổng lượt truy cập toàn bộ công cụ</div>
+      <div class="tnum" id="grandTotal">0</div>
+      <div class="tdesc">Tích lũy từ lần đầu sử dụng — lưu trực tiếp trong trình duyệt</div>
+    </div>
+  </div>
+</div>
+
+<!-- CATEGORY TABS -->
+<div class="cats">
+  <button class="cat-btn active" onclick="setCategory('all',this)">🔎 Tất cả</button>
+  <button class="cat-btn" onclick="setCategory('qr',this)">📱 QR Code</button>
+  <button class="cat-btn" onclick="setCategory('gis',this)">🗺️ GIS</button>
+  <button class="cat-btn" onclick="setCategory('pdf',this)">📄 PDF</button>
+  <button class="cat-btn" onclick="setCategory('image',this)">🖼️ Hình ảnh</button>
+  <button class="cat-btn" onclick="setCategory('tools',this)">🔧 Công cụ khác</button>
+</div>
+
+<!-- GRID -->
+<div class="grid" id="toolGrid"></div>
+
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ================================================================
+// ⚙️  CẤU HÌNH — CHỈ CẦN SỬA DÒNG NÀY
+// ================================================================
+// Điền URL thư mục chứa các file công cụ (có dấu / ở cuối).
+//
+//  • GitHub Pages  : 'https://username.github.io/ten-repo/'
+//  • Google Drive  : dán link thư mục đã publish (xem hướng dẫn dưới)
+//  • Cùng thư mục  : để trống ''
+//
+const BASE_URL = '';   // ← THAY URL CỦA BẠN VÀO ĐÂY
+// ================================================================
+
+const TOOLS = [
+  {
+    id:'tao_ma_qr', file:'1_tao_ma_qr.html',
+    name:'Tạo mã QR',
+    desc:'Sinh mã QR cho văn bản, URL, WiFi, email, số điện thoại với nhiều tùy chọn tùy biến.',
+    cat:'qr', catLabel:'QR Code',
+    icon:`<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="3" height="3" rx="0.5"/><rect x="18" y="14" width="3" height="3" rx="0.5"/><rect x="14" y="18" width="3" height="3" rx="0.5"/><rect x="18" y="18" width="3" height="3" rx="0.5"/></svg>`
+  },
+  {
+    id:'quet_ma_qr', file:'2_quet_ma_qr.html',
+    name:'Quét mã QR',
+    desc:'Quét và giải mã QR từ ảnh tải lên hoặc camera trực tiếp, lưu lịch sử quét.',
+    cat:'qr', catLabel:'QR Code',
+    icon:`<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><rect x="7" y="7" width="10" height="10" rx="1"/><line x1="12" y1="7" x2="12" y2="17"/></svg>`
+  },
+  {
+    id:'scan_to_pdf', file:'3_scan_to_pdf.html',
+    name:'Scan tài liệu → PDF',
+    desc:'Chụp ảnh hoặc tải ảnh lên rồi chuyển thành file PDF chất lượng cao.',
+    cat:'pdf', catLabel:'PDF',
+    icon:`<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>`
+  },
+  {
+    id:'chuyen_doi_dms', file:'4_chuyen_doi_DMS_DD.html',
+    name:'Chuyển đổi tọa độ DMS → DD',
+    desc:'Chuyển đổi hàng loạt tọa độ độ-phút-giây (DMS) sang thập phân (Decimal Degrees).',
+    cat:'gis', catLabel:'GIS',
+    icon:`<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>`
+  },
+  {
+    id:'export_gps', file:'5_export_GPS_tu_hinh_anh.html',
+    name:'GeoVision – Trích xuất GPS từ ảnh',
+    desc:'Đọc dữ liệu GPS/EXIF từ hình ảnh, xuất tọa độ, hiển thị trên bản đồ.',
+    cat:'gis', catLabel:'GIS',
+    icon:`<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>`
+  },
+  {
+    id:'truc_quan_gis', file:'6_truc_quan_hoa_GIS.html',
+    name:'Trực quan hóa GIS',
+    desc:'Nền tảng GIS trực quan hóa dữ liệu không gian, chuyển đổi số liệu địa lý trực tiếp trên web.',
+    cat:'gis', catLabel:'GIS',
+    icon:`<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/></svg>`
+  },
+  {
+    id:'pdf_tool', file:'7_PDF_TOOL.html',
+    name:'Tách · Gộp · Sắp xếp PDF',
+    desc:'Tách, gộp, sắp xếp, xóa trang PDF ngay trên trình duyệt, không cần upload server.',
+    cat:'pdf', catLabel:'PDF',
+    icon:`<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>`
+  },
+  {
+    id:'mat_cat_doc', file:'8_TRUC_QUAN_HOA_MAT_CAT_DOC.html',
+    name:'Trực quan hóa Mặt cắt dọc',
+    desc:'Vẽ và trực quan hóa mặt cắt dọc địa hình từ dữ liệu tọa độ và cao độ.',
+    cat:'gis', catLabel:'GIS',
+    icon:`<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>`
+  },
+  {
+    id:'so_do_dien', file:'9_CC_VE_NHAT_THU.html',
+    name:'Sơ đồ Điện Nhất Thứ',
+    desc:'Công cụ vẽ và thiết kế sơ đồ điện nhất thứ (single-line diagram) chuyên nghiệp.',
+    cat:'tools', catLabel:'Công cụ khác',
+    icon:`<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>`
+  },
+  {
+    id:'ccgis', file:'10_CCGIS.html',
+    name:'GeoVision & GeoSmart Portal',
+    desc:'Hệ thống GIS toàn diện: xử lý, phân tích và trực quan hóa dữ liệu không gian đa nguồn.',
+    cat:'gis', catLabel:'GIS',
+    icon:`<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>`
+  },
+  {
+    id:'chinh_sua_anh', file:'11_bocongcuvanphong_photoshop.html',
+    name:'Chỉnh sửa ảnh',
+    desc:'Bộ công cụ chỉnh sửa ảnh cơ bản trực tuyến: cắt, xoay, lọc màu, điều chỉnh độ sáng.',
+    cat:'image', catLabel:'Hình ảnh',
+    icon:`<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>`
+  },
+  {
+    id:'xoa_nen_chu_ky', file:'12_bocongcuvanphong_xoahinhnenchuky.html',
+    name:'Xóa nền chữ ký',
+    desc:'Làm sạch nền hình ảnh chữ ký tự động, xuất PNG trong suốt để sử dụng trên văn bản.',
+    cat:'image', catLabel:'Hình ảnh',
+    icon:`<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 20H7L3 16 13 6l8 8-1.5 1.5"/><path d="M6.5 17.5L3 21"/><path d="M15 6l3-3 3 3-3 3z"/></svg>`
+  }
+];
+
+// ================================================================
+// STATE & STORAGE
+// ================================================================
+const STORAGE_KEY = 'techtools_visits_v2';
+const TODAY_KEY   = 'techtools_today_v2';
+let currentCat = 'all';
+let visits = {}, todayData = {};
+const todayDate = new Date().toISOString().slice(0,10);
+
+function loadData() {
+  try { visits    = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch(e){ visits={}; }
+  try {
+    const raw = JSON.parse(localStorage.getItem(TODAY_KEY) || '{}');
+    todayData = raw.date === todayDate ? (raw.counts||{}) : {};
+  } catch(e){ todayData={}; }
+}
+
+function saveData() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(visits));
+    localStorage.setItem(TODAY_KEY, JSON.stringify({date:todayDate, counts:todayData}));
+  } catch(e){}
+}
+
+function recordVisit(id) {
+  visits[id]    = (visits[id]   ||0) + 1;
+  todayData[id] = (todayData[id]||0) + 1;
+  saveData();
+  updateStats();
+}
+
+// ================================================================
+// STATS
+// ================================================================
+function getTotalVisits(){ return Object.values(visits).reduce((a,b)=>a+b,0); }
+function getTodayVisits(){ return Object.values(todayData).reduce((a,b)=>a+b,0); }
+
+function updateStats(){
+  const t = getTotalVisits();
+  document.getElementById('totalVisits').textContent = t.toLocaleString('vi-VN');
+  document.getElementById('grandTotal').textContent  = t.toLocaleString('vi-VN');
+  document.getElementById('todayVisits').textContent = getTodayVisits().toLocaleString('vi-VN');
+  document.getElementById('totalTools').textContent  = TOOLS.length;
+  document.querySelectorAll('[data-visitnum]').forEach(el =>
+    el.textContent = (visits[el.getAttribute('data-visitnum')]||0).toLocaleString('vi-VN')
+  );
+}
+
+// ================================================================
+// RENDER — mỗi card là <a href="..."> thật, KHÔNG dùng window.open
+// ================================================================
+function buildUrl(file){
+  // Nếu file đã là URL đầy đủ → giữ nguyên
+  if (/^https?:\/\//i.test(file)) return file;
+  // Nếu có BASE_URL → ghép vào
+  if (BASE_URL) return BASE_URL.replace(/\/?$/,'/') + file;
+  // Cùng thư mục
+  return file;
+}
+
+function getFiltered(){
+  const q = document.getElementById('searchInput').value.trim().toLowerCase();
+  const s = document.getElementById('sortSelect').value;
+  let list = TOOLS.filter(t => {
+    const mc = currentCat==='all' || t.cat===currentCat;
+    const mq = !q || t.name.toLowerCase().includes(q) || t.desc.toLowerCase().includes(q) || t.catLabel.toLowerCase().includes(q);
+    return mc && mq;
+  });
+  if(s==='popular') list=[...list].sort((a,b)=>(visits[b.id]||0)-(visits[a.id]||0));
+  if(s==='az')      list=[...list].sort((a,b)=>a.name.localeCompare(b.name,'vi'));
+  return list;
+}
+
+function renderGrid(){
+  const grid = document.getElementById('toolGrid');
+  const list = getFiltered();
+  if(!list.length){ grid.innerHTML=`<div class="empty-msg">😕 Không tìm thấy công cụ nào</div>`; return; }
+  grid.innerHTML = list.map((t,i)=>`
+    <a class="card"
+       href="${buildUrl(t.file)}"
+       target="_blank"
+       rel="noopener noreferrer"
+       onclick="recordVisit('${t.id}')"
+       style="animation-delay:${i*40}ms">
+      <div class="card-top">
+        <div class="card-icon">${t.icon}</div>
+        <span class="card-cat-badge">${t.catLabel}</span>
+      </div>
+      <div class="card-name">${t.name}</div>
+      <div class="card-desc">${t.desc}</div>
+      <div class="card-footer">
+        <div class="visit-count">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+          </svg>
+          <span data-visitnum="${t.id}" class="visit-num">${(visits[t.id]||0).toLocaleString('vi-VN')}</span>
+          <span>lượt dùng</span>
+        </div>
+        <span class="btn-access">Truy cập →</span>
+      </div>
+    </a>
+  `).join('');
+}
+
+// ================================================================
+// ACTIONS
+// ================================================================
+function setCategory(cat,btn){
+  currentCat=cat;
+  document.querySelectorAll('.cat-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderGrid();
+}
+function filterTools(){ renderGrid(); }
+
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2200);
+}
+
+// ================================================================
+// ANIMATED COUNTER
+// ================================================================
+function animCount(el,target,dur=1200){
+  const start=performance.now();
+  (function step(now){
+    const p=Math.min((now-start)/dur,1), ease=1-Math.pow(1-p,3);
+    el.textContent=Math.round(target*ease).toLocaleString('vi-VN');
+    if(p<1) requestAnimationFrame(step);
+  })(performance.now());
+}
+
+// ================================================================
+// INIT
+// ================================================================
+loadData();
+renderGrid();
+setTimeout(()=>{
+  animCount(document.getElementById('totalVisits'), getTotalVisits(), 1000);
+  animCount(document.getElementById('grandTotal'),  getTotalVisits(), 1200);
+  animCount(document.getElementById('todayVisits'), getTodayVisits(),  800);
+},100);
+</script>
+</body>
+</html>

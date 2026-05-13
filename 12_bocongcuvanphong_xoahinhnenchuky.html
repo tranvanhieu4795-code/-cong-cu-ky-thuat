@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+  <meta content="Thiết kế bản đồ GIS và chuyển hệ tọa độ WGS84 sang VN2000" name="title" />
+  <meta name="description"
+    content="Dịch vụ miễn phí đổi tọa độ WGS84 sang VN2000 và ngược lại, thiết kế bản đồ GIS trực quan, ứng dụng GIS trong AutoCAD, KML, KMZ, PNG cho trắc địa, viễn thám, nhà đất và GPS." />
+  <meta name="keywords"
+    content="GIS, hệ thống thông tin địa lý, đổi tọa độ GIS, thiết kế bản đồ GIS, đổi tọa độ VN2000, hệ tọa độ VN2000 các tỉnh, đổi tọa độ GPS sang VN2000, đổi tọa độ GPS, AutoCAD, KML, KMZ, PNG, hình ảnh, kinh tuyến trục, VN2000, WGS84, nhà đất, thửa đất, tìm vị trí, trắc địa, viễn thám, GPS" />
+  <meta property="og:title" content="Thiết kế bản đồ GIS và chuyển hệ tọa độ WGS84 sang VN2000" />
+  <meta property="og:description" content="Đo đạc, xuất dữ liệu bản đồ GIS ra: Excel, Hình ảnh, KML, KMZ, AutoCAD." />
+  <!-- Favicon -->
+  <link rel="apple-touch-icon" href="https://gis.vn/img/ic_favicon_mini.png" />
+  <link rel="shortcut icon" href="https://gis.vn/img/ic_favicon_mini.png" />
+  <title>Xóa nền chữ ký | GIS Việt Nam</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="SHORTCUT ICON" href="/favicon.ico?ver=pmbmQ2B6y_qugr8TjcYrRA%3d%3d" type="image/x-icon" />
+  <style>
+    :root {
+      --main-color: #154397;
+    }
+
+    /* checker bg for preview */
+    .checker {
+      background-image: linear-gradient(45deg, #e6e6e6 25%, transparent 25%),
+        linear-gradient(-45deg, #e6e6e6 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #e6e6e6 75%),
+        linear-gradient(-45deg, transparent 75%, #e6e6e6 75%);
+      background-size: 20px 20px;
+      background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+    }
+
+    /* ensure canvas inside preview scales nicely */
+    #previewCanvas {
+      max-width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    /* cursor styles for tools */
+    .cursor-brush {
+      cursor: crosshair;
+    }
+
+    .cursor-wand {
+      cursor: crosshair;
+    }
+  </style>
+</head>
+
+<body class="bg-gray-50 min-h-screen p-6 flex flex-col items-center">
+  <div class="max-w-5xl w-full">
+    <!-- Header with back button -->
+    <div class="flex items-center justify-between mb-6">
+      <div class="flex items-center gap-4">
+        <button onclick="window.location.href='/bo-cong-cu-van-phong'"
+          class="inline-flex items-center gap-2 px-3 py-1 rounded-md text-[var(--main-color)] border hover:bg-[var(--main-color)] hover:text-white transition">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+          </svg>
+          Back
+        </button>
+        <h1 class="text-2xl font-bold text-[var(--main-color)]">
+          Xóa nền chữ ký
+        </h1>
+      </div>
+      <!-- <div class="text-sm text-gray-600">Office Toolkit - gis.vn</div> -->
+    </div>
+
+    <div class="bg-white rounded-2xl shadow p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- Left: preview -->
+      <div class="lg:col-span-3 space-y-4">
+        <div class="flex items-start justify-between">
+          <div class="flex items-center gap-3">
+            <!-- file input hidden + styled label -->
+            <input id="fileInput" type="file" accept="image/*" class="hidden" />
+            <label for="fileInput"
+              class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--main-color)] text-white font-medium shadow-md cursor-pointer hover:bg-[#10306c] transition">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24"
+                stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M16 12l-4-4m0 0l-4 4m4-4v12" />
+              </svg>
+              Chọn ảnh chữ ký
+            </label>
+            <button id="autoSampleBtn"
+              class="px-3 py-2 rounded-lg border text-sm text-gray-700 hover:bg-gray-100 transition">
+              Xóa nền
+            </button>
+            <button id="downloadPngBtn"
+              class="px-3 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 transition">
+              Tải PNG
+            </button>
+            <button id="downloadJpgBtn"
+              class="px-3 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition">
+              Tải JPG (với nền)
+            </button>
+          </div>
+
+          <div class="text-sm text-gray-500">
+            Kích thước canvas: <span id="canvasSize">—</span>
+          </div>
+        </div>
+
+        <!-- preview area -->
+        <div class="border rounded-xl overflow-auto p-4" style="background: lightslategray;">
+          <div id="previewArea" class="checker w-full flex justify-center items-center"
+            style="min-height: 300px; width: fit-content;">
+            <!-- canvas appended here -->
+            <canvas id="previewCanvas"></canvas>
+          </div>
+        </div>
+
+        <!-- tools row -->
+        <div class="flex flex-wrap gap-3 items-center">
+          <div style="display: none;" class="flex items-center gap-2">
+            <button id="magicWandBtn" class="px-3 py-2 rounded-lg border text-sm hover:bg-gray-100 transition">
+              Magic Wand (click để sample)
+            </button>
+            <button id="brushEraseBtn" class="px-3 py-2 rounded-lg border text-sm hover:bg-gray-100 transition">
+              Brush: Erase
+            </button>
+            <button id="brushRestoreBtn" class="px-3 py-2 rounded-lg border text-sm hover:bg-gray-100 transition">
+              Brush: Restore
+            </button>
+          </div>
+
+          <div class="flex items-center gap-2 ml-auto">
+            <label style="display: none;" class="text-sm text-gray-600">Xóa nhiễu</label>
+            <button style="display: none;" id="denoiseBtn"
+              class="px-3 py-1 rounded-md border text-sm hover:bg-gray-100">
+              Denoise
+            </button>
+            <button id="autoTrimBtn" class="px-3 py-1 rounded-md border text-sm hover:bg-gray-100">
+              Auto Trim (crop)
+            </button>
+            <button id="resetBtn" class="px-3 py-1 rounded-md border text-sm hover:bg-gray-100">
+              Reset
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: options -->
+      <div class="space-y-4" style="display: none;">
+        <div class="bg-gray-50 p-4 rounded-lg">
+          <h3 class="font-semibold text-[var(--main-color)] mb-2">
+            Auto removal
+          </h3>
+          <div class="mb-3">
+            <label class="text-sm text-gray-600">Tolerance: <span id="tolVal">30</span></label>
+            <input id="tolerance" type="range" min="0" max="200" value="0" class="w-full" />
+          </div>
+
+          <div class="mb-3">
+            <label class="text-sm text-gray-600">Feather (soft edge): <span id="featherVal">2</span></label>
+            <input id="feather" type="range" min="0" max="8" value="0" class="w-full" />
+          </div>
+
+          <div class="mb-3">
+            <label class="text-sm text-gray-600">Brush size: <span id="brushSizeVal">20</span> px</label>
+            <input id="brushSize" type="range" min="4" max="120" value="20" class="w-full" />
+          </div>
+
+          <div class="mb-2">
+            <label class="text-sm text-gray-600">Background color (for JPG export)</label>
+            <input id="bgColorInput" type="color" value="#ffffff" class="w-16 h-10" />
+          </div>
+        </div>
+
+        <div class="bg-gray-50 p-4 rounded-lg">
+          <h3 class="font-semibold text-[var(--main-color)] mb-2">
+            Hướng dẫn nhanh
+          </h3>
+          <ol class="text-sm text-gray-700 list-decimal ml-5 space-y-1">
+            <li>Chọn ảnh chữ ký</li>
+            <li>
+              Bấm <strong>Auto sample</strong> hoặc dùng
+              <strong>Magic Wand</strong> để lấy màu nền
+            </li>
+            <li>Điều chỉnh <em>Tolerance</em> cho sạch nền</li>
+            <li>
+              Dùng <strong>Brush: Erase/Restore</strong> để tinh chỉnh tay
+            </li>
+            <li>Bấm <strong>Tải PNG</strong> để lưu ở dạng trong suốt</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-4 text-xs text-gray-500">
+      Ghi chú: công cụ này hoạt động trên trình duyệt, ảnh không gửi đi
+      server.
+    </div>
+  </div>
+
+  <!-- Script xử lý -->
+  <script>
+    // Import script xử lý từ file external
+    import("/bocongcuvanphong/clearbackground.js").then((module) => {
+      module.initClearBackgroundTool();
+    });
+  </script>
+</body>
+
+</html>

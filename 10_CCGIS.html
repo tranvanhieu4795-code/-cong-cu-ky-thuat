@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GeoVision & GeoSmart Portal - Hệ Thống GIS Toàn Diện</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+
+    <script src="https://cdn.jsdelivr.net/npm/exif-js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
+    <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/@geoman-io/leaflet-geoman-free@latest/dist/leaflet-geoman.css" />
+    <script src="https://unpkg.com/@geoman-io/leaflet-geoman-free@latest/dist/leaflet-geoman.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+    <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+
+    <style>
+        :root { --accent: #3b82f6; --success: #10b981; --danger: #ef4444; }
+        body { font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+        .leaflet-default-icon-path { background-image: url(https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png); }
+        .leaflet-popup-content-wrapper, .leaflet-popup-tip { background: #1e293b; color: #f8fafc; border: 1px solid #334155; }
+        
+        .upload-box { background: rgba(59, 130, 246, 0.05); border: 2px dashed var(--accent); transition: all 0.3s; }
+        .upload-box:hover { background: rgba(59, 130, 246, 0.1); transform: translateY(-2px); box-shadow: 0 8px 20px rgba(59, 130, 246, 0.15); }
+
+        table { width: 100%; border-collapse: collapse; text-align: left; }
+        th, td { padding: 10px 15px; border-bottom: 1px solid #334155; font-size: 0.85rem; }
+        th { background: #1e293b; position: sticky; top: 0; color: #94a3b8; text-transform: uppercase; z-index: 2; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        tr:hover td { background: rgba(255,255,255,0.02); }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+    </style>
+</head>
+
+<body class="bg-slate-900 text-slate-200 h-screen w-screen overflow-hidden flex flex-col md:flex-row">
+
+    <aside class="w-full md:w-80 lg:w-[350px] bg-slate-800 shadow-[4px_0_24px_rgba(0,0,0,0.5)] flex flex-col z-[1000] border-r border-slate-700">
+        <div class="p-5 border-b border-slate-700 bg-slate-900/50 flex justify-between items-center">
+            <div>
+                <h1 class="text-xl font-bold text-cyan-400 flex items-center gap-2 uppercase tracking-wide">
+                    <i class="fa-solid fa-satellite-dish"></i> GeoVision Pro
+                </h1>
+                <p class="text-xs text-slate-400 mt-1">Trích xuất Metadata & Web GIS</p>
+            </div>
+        </div>
+
+        <div class="p-5 flex-1 overflow-y-auto space-y-6">
+            
+            <div>
+                <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">1. Nạp Dữ Liệu Hình Ảnh</h3>
+                <div class="upload-box rounded-lg p-6 text-center cursor-pointer flex flex-col items-center gap-2" id="dropZone">
+                    <i class="fa-solid fa-cloud-arrow-up text-4xl text-blue-500"></i>
+                    <span class="font-medium text-blue-400">Kéo & Thả Ảnh Vào Đây</span>
+                    <p class="text-xs text-slate-400">Hỗ trợ định dạng JPEG, PNG, TIFF</p>
+                    <input type="file" id="fileInput" multiple accept="image/jpeg, image/png, image/tiff" hidden>
+                </div>
+            </div>
+
+            <div>
+                <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">2. Xuất Dữ Liệu GIS</h3>
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="exportCSV()" class="bg-slate-700 hover:bg-blue-600 transition p-2 rounded text-sm flex items-center justify-center gap-2"><i class="fa-solid fa-file-csv"></i> CSV</button>
+                    <button onclick="exportXLSX()" class="bg-slate-700 hover:bg-green-600 transition p-2 rounded text-sm flex items-center justify-center gap-2"><i class="fa-solid fa-file-excel"></i> XLSX</button>
+                    <button onclick="exportGeoJSON()" class="bg-slate-700 hover:bg-yellow-600 transition p-2 rounded text-sm flex items-center justify-center gap-2"><i class="fa-solid fa-code"></i> GeoJSON</button>
+                    <button onclick="exportKML()" class="bg-slate-700 hover:bg-purple-600 transition p-2 rounded text-sm flex items-center justify-center gap-2"><i class="fa-solid fa-earth-americas"></i> KML</button>
+                    <button onclick="exportKMZ()" class="bg-slate-700 hover:bg-indigo-600 transition p-2 rounded text-sm flex items-center justify-center gap-2"><i class="fa-solid fa-file-zipper"></i> KMZ</button>
+                    <button onclick="exportGPX()" class="bg-slate-700 hover:bg-teal-600 transition p-2 rounded text-sm flex items-center justify-center gap-2"><i class="fa-solid fa-route"></i> GPX</button>
+                </div>
+            </div>
+
+            <div>
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">3. Công cụ hệ thống</h3>
+                </div>
+                
+                <div class="flex gap-2 mb-3">
+                    <button onclick="undo()" id="btnUndo" class="flex-1 bg-slate-700 hover:bg-cyan-600 transition p-2 rounded text-sm flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed">
+                        <i class="fa-solid fa-rotate-left"></i> Undo
+                    </button>
+                    <button onclick="redo()" id="btnRedo" class="flex-1 bg-slate-700 hover:bg-cyan-600 transition p-2 rounded text-sm flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed">
+                        <i class="fa-solid fa-rotate-right"></i> Redo
+                    </button>
+                </div>
+
+                <div class="space-y-2">
+                    <button onclick="clearAll()" class="w-full text-left bg-red-900/40 hover:bg-red-600 text-red-300 hover:text-white transition p-2.5 rounded text-sm flex items-center gap-3 border border-red-800/50 mt-4">
+                        <i class="fa-solid fa-trash-can w-4"></i> <span>Xóa toàn bộ dữ liệu (Bảng & Bản đồ)</span>
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </aside>
+
+    <main class="flex-1 flex flex-col relative h-full">
+        <div id="map" class="w-full h-[55%] z-0 bg-slate-800 border-b border-slate-700"></div>
+
+        <div class="h-[45%] flex flex-col bg-slate-900">
+            <div class="p-3 bg-slate-800 flex justify-between items-center border-b border-slate-700">
+                <h2 class="text-sm font-bold text-emerald-400 flex items-center gap-2"><i class="fa-solid fa-table-list"></i> KẾT QUẢ TRÍCH XUẤT (WGS84)</h2>
+                <div class="text-xs bg-slate-900 px-3 py-1 rounded-full border border-slate-700">
+                    Thành công: <strong id="validCount" class="text-emerald-400">0</strong> | Lỗi: <strong id="invalidCount" class="text-red-400">0</strong>
+                </div>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto p-4">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Tên File</th>
+                            <th>Vĩ độ (Lat)</th>
+                            <th>Kinh độ (Lng)</th>
+                            <th>Độ cao (m)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="validBody"></tbody>
+                </table>
+
+                <div id="errorContainer" class="mt-4 pt-3 border-t border-dashed border-slate-700" style="display: none;">
+                    <h3 class="text-red-400 text-sm font-bold mb-2"><i class="fa-solid fa-triangle-exclamation"></i> Không Tìm Thấy Metadata GPS:</h3>
+                    <ul id="invalidList" class="space-y-1 text-xs text-red-300"></ul>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // ==========================================
+        // 1. KHỞI TẠO BẢN ĐỒ & PLUGIN
+        // ==========================================
+        delete L.Icon.Default.prototype._getIconUrl;
+        L.Icon.Default.mergeOptions({
+            iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+            iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+            shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+        });
+
+        const map = L.map('map', { zoomControl: false }).setView([16.047079, 108.206230], 5);
+        const darkMap = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution: '&copy; OpenStreetMap' }).addTo(map);
+        const satelliteMap = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: '&copy; Esri' });
+        const streetMap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap' });
+
+        L.control.layers({ "Giao diện Tối": darkMap, "Vệ tinh": satelliteMap, "Đường phố": streetMap }).addTo(map);
+        L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+        map.pm.addControls({ position: 'topleft', drawCircle: false, drawCircleMarker: false, drawText: false, cutPolygon: false });
+        L.Control.geocoder({ defaultMarkGeocode: true, position: 'topright', placeholder: 'Tìm kiếm địa chỉ...' }).addTo(map);
+
+        let markersCluster = L.markerClusterGroup();
+        map.addLayer(markersCluster);
+
+        // ==========================================
+        // 2. HỆ THỐNG LƯU TRỮ TRẠNG THÁI (UNDO/REDO)
+        // ==========================================
+        let appHistory = [];
+        let currentStep = -1;
+
+        function saveState() {
+            appHistory = appHistory.slice(0, currentStep + 1);
+            
+            let geomanFeatures = [];
+            map.pm.getGeomanLayers().forEach(layer => { geomanFeatures.push(layer.toGeoJSON()); });
+
+            let clusterPts = [];
+            markersCluster.getLayers().forEach(l => {
+                clusterPts.push({ lat: l.getLatLng().lat, lng: l.getLatLng().lng, popup: l.getPopup() ? l.getPopup().getContent() : '' });
+            });
+
+            appHistory.push({
+                extracted: JSON.parse(JSON.stringify(extractedData)),
+                errors: errorFiles,
+                geoman: geomanFeatures,
+                cluster: clusterPts
+            });
+            
+            currentStep++;
+            updateUndoRedoUI();
+        }
+
+        function updateUndoRedoUI() {
+            const btnUndo = document.getElementById("btnUndo");
+            const btnRedo = document.getElementById("btnRedo");
+            btnUndo.disabled = currentStep <= 0;
+            btnRedo.disabled = currentStep >= appHistory.length - 1;
+        }
+
+        function undo() { if (currentStep > 0) restoreState(currentStep - 1); }
+        function redo() { if (currentStep < appHistory.length - 1) restoreState(currentStep + 1); }
+
+        function restoreState(index) {
+            let state = appHistory[index];
+            currentStep = index;
+
+            // Phục hồi Bảng
+            extractedData = JSON.parse(JSON.stringify(state.extracted));
+            errorFiles = state.errors;
+            validBody.innerHTML = "";
+            extractedData.forEach(d => renderValidRow(d));
+            updateStats();
+
+            // Dọn Dẹp Bản Đồ
+            cleanMapCompletely();
+
+            // Phục hồi Marker
+            state.cluster.forEach(pt => {
+                let m = L.marker([pt.lat, pt.lng]);
+                if (pt.popup) m.bindPopup(pt.popup);
+                markersCluster.addLayer(m);
+            });
+
+            // Phục hồi Geoman (Hình vẽ)
+            state.geoman.forEach(geo => {
+                L.geoJSON(geo, {
+                    onEachFeature: function (feature, layer) {
+                        map.addLayer(layer);
+                        layer.on('pm:edit', saveState);
+                        layer.on('pm:dragend', saveState);
+                    }
+                });
+            });
+
+            updateUndoRedoUI();
+        }
+
+        // Auto Save Geoman
+        map.on('pm:create', function(e) {
+            saveState();
+            e.layer.on('pm:edit', saveState);
+            e.layer.on('pm:dragend', saveState);
+        });
+        map.on('pm:remove', saveState);
+
+        // ==========================================
+        // 3. XỬ LÝ TRÍCH XUẤT HÌNH ẢNH 
+        // ==========================================
+        const dropZone = document.getElementById("dropZone");
+        const fileInput = document.getElementById("fileInput");
+        const validBody = document.getElementById("validBody");
+        const invalidList = document.getElementById("invalidList");
+        const errorContainer = document.getElementById("errorContainer");
+        
+        let extractedData = [];
+        let errorFiles = 0;
+
+        dropZone.onclick = () => fileInput.click();
+        dropZone.ondragover = e => { e.preventDefault(); dropZone.style.borderColor = "#10b981"; };
+        dropZone.ondragleave = e => { dropZone.style.borderColor = "#3b82f6"; };
+        dropZone.ondrop = e => { e.preventDefault(); dropZone.style.borderColor = "#3b82f6"; handleFiles(e.dataTransfer.files); };
+        fileInput.onchange = () => handleFiles(fileInput.files);
+
+        function handleFiles(files) {
+            let filesProcessed = 0;
+            let totalFiles = files.length;
+
+            for (let file of files) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    const img = new Image();
+                    img.src = e.target.result;
+
+                    img.onload = function () {
+                        EXIF.getData(img, function () {
+                            const lat = EXIF.getTag(this, "GPSLatitude");
+                            const lon = EXIF.getTag(this, "GPSLongitude");
+                            const latRef = EXIF.getTag(this, "GPSLatitudeRef");
+                            const lonRef = EXIF.getTag(this, "GPSLongitudeRef");
+                            const alt = EXIF.getTag(this, "GPSAltitude");
+                            const altRef = EXIF.getTag(this, "GPSAltitudeRef");
+
+                            if (lat && lon) {
+                                let latDD = convertToDD(lat, latRef);
+                                let lonDD = convertToDD(lon, lonRef);
+                                let altValue = parseAltitude(alt, altRef);
+                                
+                                let dataPoint = { file: file.name, lat: latDD, lng: lonDD, alt: altValue };
+                                extractedData.push(dataPoint);
+                                renderValidRow(dataPoint);
+
+                                let marker = L.marker([latDD, lonDD]).bindPopup(`
+                                    <div class="text-sm">
+                                        <strong class="text-blue-400"><i class="fa-regular fa-image"></i> ${file.name}</strong><br/>
+                                        <span class="text-slate-300">Lat: ${latDD}</span><br/>
+                                        <span class="text-slate-300">Lng: ${lonDD}</span>
+                                    </div>
+                                `);
+                                markersCluster.addLayer(marker);
+                            } else { renderInvalidRow(file.name); }
+                            
+                            updateStats();
+                            filesProcessed++;
+                            if (filesProcessed === totalFiles) {
+                                if (extractedData.length > 0) map.fitBounds(markersCluster.getBounds(), { padding: [30, 30], maxZoom: 17 });
+                                saveState(); 
+                            }
+                        });
+                    };
+                };
+                reader.readAsDataURL(file);
+            }
+            fileInput.value = "";
+        }
+
+        function convertToDD(dms, ref) {
+            if (!dms || dms.length < 3) return 0;
+            let dd = (dms[0].numerator / dms[0].denominator) + ((dms[1].numerator / dms[1].denominator) / 60) + ((dms[2].numerator / dms[2].denominator) / 3600);
+            if (ref === "S" || ref === "W") dd *= -1;
+            return Number(dd.toFixed(7));
+        }
+
+        function parseAltitude(alt, ref) {
+            if (alt === undefined || alt === null) return 0;
+            let val = (typeof alt === 'number') ? alt : (alt.numerator / alt.denominator);
+            if (ref == 1) val = -val;
+            return Number(val.toFixed(2));
+        }
+
+        function renderValidRow(data) {
+            const row = validBody.insertRow();
+            row.innerHTML = `
+                <td class="text-blue-300"><i class="fa-regular fa-image mr-1"></i> ${data.file}</td>
+                <td class="text-slate-300">${data.lat}</td>
+                <td class="text-slate-300">${data.lng}</td>
+                <td class="text-slate-300">${data.alt > 0 ? data.alt : "N/A"}</td>
+            `;
+        }
+
+        function renderInvalidRow(name) {
+            errorFiles++;
+            errorContainer.style.display = "block";
+            const li = document.createElement("li");
+            li.innerHTML = `<span class="bg-red-900/30 px-2 py-1 rounded inline-block w-full"><i class="fa-solid fa-xmark mr-1"></i> ${name}</span>`;
+            invalidList.appendChild(li);
+        }
+
+        function updateStats() {
+            document.getElementById("validCount").innerText = extractedData.length;
+            document.getElementById("invalidCount").innerText = errorFiles;
+        }
+
+        // ==========================================
+        // 4. HÀM XÓA DỮ LIỆU CHUYÊN SÂU
+        // ==========================================
+        // Hàm dọn dẹp Map tận gốc rễ
+        function cleanMapCompletely() {
+            if (typeof markersCluster !== 'undefined') markersCluster.clearLayers();
+            
+            // Xóa sạch Geoman Drawing
+            map.pm.getGeomanLayers().forEach(layer => { try { map.removeLayer(layer); } catch(e){} });
+            
+            // Quét và xóa tất cả Vector Layer trôi nổi
+            map.eachLayer(layer => {
+                if (layer instanceof L.Path || (layer instanceof L.Marker && !layer._url && layer !== markersCluster)) {
+                    try { map.removeLayer(layer); } catch(e){}
+                }
+            });
+        }
+
+        function clearAll() {
+            if(!confirm("Hủy toàn bộ dữ liệu hiện tại? Hành động này sẽ quét sạch bản đồ!")) return;
+            
+            // Xóa Bảng
+            extractedData = [];
+            errorFiles = 0;
+            validBody.innerHTML = "";
+            invalidList.innerHTML = "";
+            errorContainer.style.display = "none";
+            updateStats();
+            
+            // Gọi hàm Xóa Bản Đồ Triệt Để
+            cleanMapCompletely();
+            map.setView([16.047079, 108.206230], 5);
+            
+            saveState(); // Lưu trạng thái trống để có thể Undo lệnh xóa!
+        }
+
+        // ==========================================
+        // 5. GỘP DỮ LIỆU ĐỂ XUẤT FILE (ẢNH + MAP DRAWING)
+        // ==========================================
+        function flattenLatLngs(latlngs) {
+            let result = [];
+            function recurse(arr) {
+                for(let i=0; i<arr.length; i++) {
+                    if(arr[i].lat !== undefined && arr[i].lng !== undefined) result.push(arr[i]);
+                    else if(Array.isArray(arr[i])) recurse(arr[i]);
+                }
+            }
+            recurse(latlngs);
+            return result;
+        }
+
+        // Gộp dữ liệu thành mảng cho CSV, XLSX, GPX
+        function getCombinedDataForFlatExport() {
+            let data = [...extractedData];
+            let counter = 1;
+            map.pm.getGeomanLayers().forEach(layer => {
+                let shape = layer.pm._shape || "Feature";
+                if (layer instanceof L.Marker || layer instanceof L.CircleMarker) {
+                    let ll = layer.getLatLng();
+                    data.push({ file: `Drawn_${shape}_${counter}`, lat: Number(ll.lat.toFixed(7)), lng: Number(ll.lng.toFixed(7)), alt: 0 });
+                    counter++;
+                } else if (typeof layer.getLatLngs === 'function') {
+                    let flatCoords = flattenLatLngs(layer.getLatLngs());
+                    flatCoords.forEach((ll, idx) => {
+                        data.push({ file: `Drawn_${shape}_${counter}_Pt${idx+1}`, lat: Number(ll.lat.toFixed(7)), lng: Number(ll.lng.toFixed(7)), alt: 0 });
+                    });
+                    counter++;
+                }
+            });
+            return data;
+        }
+
+        // Gộp dữ liệu thành GeoJSON (Giữ nguyên cấu trúc Line/Polygon)
+        function getCombinedGeoJSON() {
+            let features = extractedData.map(d => ({
+                "type": "Feature",
+                "properties": { "name": d.file, "altitude": d.alt },
+                "geometry": { "type": "Point", "coordinates": [d.lng, d.lat, d.alt] }
+            }));
+
+            map.pm.getGeomanLayers().forEach((layer, idx) => {
+                let geo = layer.toGeoJSON();
+                geo.properties = geo.properties || {};
+                geo.properties.name = `Drawn ${layer.pm._shape || 'Feature'} ${idx+1}`;
+                geo.properties.altitude = 0;
+                features.push(geo);
+            });
+
+            return { "type": "FeatureCollection", "features": features };
+        }
+
+        function checkData() {
+            if (extractedData.length === 0 && map.pm.getGeomanLayers().length === 0) { 
+                alert("Chưa có dữ liệu Hình ảnh hoặc Hình vẽ GIS để xuất!"); 
+                return false; 
+            } 
+            return true; 
+        }
+
+        function downloadFile(content, fileName, mimeType) {
+            const blob = new Blob([content], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a"); a.href = url; a.download = fileName; a.click(); URL.revokeObjectURL(url);
+        }
+
+        // --- CÁC HÀM XUẤT ---
+        function exportCSV() {
+            if (!checkData()) return;
+            let data = getCombinedDataForFlatExport();
+            let csv = "\uFEFFFileName,Latitude,Longitude,Altitude\n";
+            data.forEach(d => { csv += `"${d.file}",${d.lat},${d.lng},${d.alt}\n`; });
+            downloadFile(csv, "GeoVision_Export.csv", "text/csv;charset=utf-8;");
+        }
+
+        function exportXLSX() {
+            if (!checkData()) return;
+            let expData = getCombinedDataForFlatExport();
+            let data = [["Tên File/Tính năng", "Vĩ độ (Lat)", "Kinh độ (Lng)", "Độ cao (m)"]];
+            expData.forEach(d => { data.push([d.file, d.lat, d.lng, d.alt]); });
+            
+            const ws = XLSX.utils.aoa_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "GPS Data");
+            XLSX.writeFile(wb, "GeoVision_Export.xlsx");
+        }
+
+        function generateKML() {
+            let kml = `<?xml version="1.0" encoding="UTF-8"?>\n<kml xmlns="http://www.opengis.net/kml/2.2">\n<Document>\n<name>GeoVision Extract</name>\n`;
+            let geojson = getCombinedGeoJSON();
+            
+            geojson.features.forEach(f => {
+                kml += `  <Placemark>\n    <name>${f.properties.name}</name>\n`;
+                if (f.geometry.type === 'Point') {
+                    let c = f.geometry.coordinates;
+                    kml += `    <Point><coordinates>${c[0]},${c[1]},${c[2]||0}</coordinates></Point>\n`;
+                } else if (f.geometry.type === 'LineString') {
+                    let cstr = f.geometry.coordinates.map(c => `${c[0]},${c[1]},0`).join(' ');
+                    kml += `    <LineString><coordinates>${cstr}</coordinates></LineString>\n`;
+                } else if (f.geometry.type === 'Polygon') {
+                    let rings = f.geometry.coordinates;
+                    kml += `    <Polygon><outerBoundaryIs><LinearRing><coordinates>`;
+                    kml += rings[0].map(c => `${c[0]},${c[1]},0`).join(' ');
+                    kml += `</coordinates></LinearRing></outerBoundaryIs></Polygon>\n`;
+                }
+                kml += `  </Placemark>\n`;
+            });
+            kml += `</Document>\n</kml>`;
+            return kml;
+        }
+
+        function exportKML() { if (!checkData()) return; downloadFile(generateKML(), "GeoVision_Export.kml", "application/vnd.google-earth.kml+xml"); }
+
+        async function exportKMZ() {
+            if (!checkData()) return;
+            let zip = new JSZip();
+            zip.file("doc.kml", generateKML());
+            let content = await zip.generateAsync({type:"blob"});
+            let url = URL.createObjectURL(content);
+            let link = document.createElement("a"); link.href = url; link.download = "GeoVision_Export.kmz"; link.click();
+        }
+
+        function exportGeoJSON() {
+            if (!checkData()) return;
+            let geojson = getCombinedGeoJSON();
+            downloadFile(JSON.stringify(geojson, null, 2), "GeoVision_Export.geojson", "application/json");
+        }
+
+        function exportGPX() {
+            if (!checkData()) return;
+            let data = getCombinedDataForFlatExport();
+            let gpx = `<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="GeoVision Pro" xmlns="http://www.topografix.com/GPX/1/1">\n`;
+            data.forEach(d => { gpx += `  <wpt lat="${d.lat}" lon="${d.lng}">\n    <ele>${d.alt}</ele>\n    <name>${d.file}</name>\n  </wpt>\n`; });
+            gpx += `</gpx>`;
+            downloadFile(gpx, "GeoVision_Export.gpx", "application/gpx+xml");
+        }
+
+        // ==========================================
+        // 6. CHẠY KHỞI TẠO STATE BAN ĐẦU
+        // ==========================================
+        setTimeout(saveState, 500);
+
+    </script>
+</body>
+</html>

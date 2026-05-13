@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Scan tài liệu → PDF</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+  <style>
+    :root{--main:#154397;}
+    body{font-family:'Segoe UI',system-ui,sans-serif;}
+    #video{background:#000;border-radius:8px;}
+    .checker{
+      background-image:linear-gradient(45deg,#e5e7eb 25%,transparent 25%),
+        linear-gradient(-45deg,#e5e7eb 25%,transparent 25%),
+        linear-gradient(45deg,transparent 75%,#e5e7eb 75%),
+        linear-gradient(-45deg,transparent 75%,#e5e7eb 75%);
+      background-size:16px 16px;background-position:0 0,0 8px,8px -8px,-8px 0;
+    }
+    .page-item{cursor:grab;user-select:none;}
+    .page-item:active{cursor:grabbing;}
+    .page-item.sortable-chosen{opacity:.6;transform:scale(.97);}
+    .btn{
+      display:inline-flex;align-items:center;gap:6px;padding:8px 16px;
+      border-radius:8px;font-weight:600;font-size:14px;cursor:pointer;
+      border:none;transition:all .2s;
+    }
+    .btn-primary{background:var(--main);color:#fff;}
+    .btn-primary:hover{filter:brightness(1.1);}
+    .btn-outline{background:#fff;border:1px solid #d1d5db;color:#374151;}
+    .btn-outline:hover{background:#f3f4f6;}
+    .btn-green{background:#16a34a;color:#fff;}
+    .btn-green:hover{filter:brightness(1.1);}
+    .btn-red{background:#dc2626;color:#fff;}
+    .btn-red:hover{filter:brightness(1.1);}
+    .btn:disabled{opacity:.45;cursor:not-allowed;}
+    input[type=range]{accent-color:var(--main);}
+    #pagesList{min-height:60px;}
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen p-4 md:p-6 flex flex-col items-center">
+<div class="max-w-6xl w-full">
+
+  <!-- Header -->
+  <div class="flex items-center gap-3 mb-5">
+    <h1 class="text-2xl font-bold" style="color:var(--main)">📄 Scan tài liệu → PDF</h1>
+    <span class="text-sm text-gray-400 ml-auto">Xử lý trên trình duyệt</span>
+  </div>
+
+  <div class="bg-white rounded-2xl shadow p-5 grid grid-cols-1 lg:grid-cols-3 gap-5">
+
+    <!-- LEFT: Camera + Editor -->
+    <div class="lg:col-span-2 space-y-4">
+
+      <!-- Action bar -->
+      <div class="flex flex-wrap gap-2 items-center">
+        <button class="btn btn-primary" id="startCamBtn" onclick="toggleCamera()">📷 Bật camera</button>
+        <button class="btn btn-outline" id="takePhotoBtn" onclick="takePhoto()" disabled>📸 Chụp ảnh</button>
+        <label class="btn btn-outline cursor-pointer">
+          ⬆ Upload ảnh
+          <input id="fileInput" type="file" accept="image/*" multiple class="hidden" onchange="uploadImages(this.files)"/>
+        </label>
+        <button class="btn btn-outline" id="clearAllBtn" onclick="clearAllPages()">🗑 Xóa tất cả</button>
+        <div class="ml-auto flex items-center gap-2 text-sm">
+          <label class="text-gray-600 font-medium">Chất lượng</label>
+          <select id="qualitySelect" class="p-2 border rounded-lg text-sm">
+            <option value="2480">Cao (A4 300dpi)</option>
+            <option value="1754" selected>Trung bình</option>
+            <option value="827">Thấp</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Camera + Preview grid -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+        <!-- Camera preview -->
+        <div class="bg-gray-100 rounded-xl p-3">
+          <div class="text-xs text-gray-500 mb-2 font-medium">Camera</div>
+          <div class="checker rounded-lg overflow-hidden" style="height:300px;">
+            <video id="video" autoplay playsinline class="w-full h-full object-cover"></video>
+          </div>
+          <div class="mt-2 text-xs text-gray-400">Cần cấp quyền camera cho trình duyệt.</div>
+        </div>
+
+        <!-- Edit preview -->
+        <div class="bg-gray-100 rounded-xl p-3">
+          <div class="flex items-center justify-between mb-2">
+            <div class="text-xs font-medium text-gray-500">Chỉnh sửa ảnh</div>
+            <div class="text-xs text-gray-400" id="editPageLabel">—</div>
+          </div>
+          <div class="checker rounded-lg flex items-center justify-center overflow-hidden" style="height:200px;">
+            <canvas id="capturePreview" class="max-w-full max-h-full"></canvas>
+          </div>
+          <div class="mt-3 space-y-2">
+            <div class="flex items-center gap-2 text-xs">
+              <label class="w-24 text-gray-600 font-medium">Sáng</label>
+              <input id="brightness" type="range" min="-150" max="150" value="0" class="flex-1" oninput="applyPreview()"/>
+              <span id="brVal" class="w-8 text-right text-gray-500">0</span>
+            </div>
+            <div class="flex items-center gap-2 text-xs">
+              <label class="w-24 text-gray-600 font-medium">Tương phản</label>
+              <input id="contrast" type="range" min="-150" max="150" value="0" class="flex-1" oninput="applyPreview()"/>
+              <span id="ctVal" class="w-8 text-right text-gray-500">0</span>
+            </div>
+            <div class="flex items-center gap-2 text-xs">
+              <label class="w-24 text-gray-600 font-medium">Xám</label>
+              <input id="grayscale" type="checkbox" class="w-4 h-4" onchange="applyPreview()"/>
+              <span class="text-gray-500">Đen trắng</span>
+            </div>
+            <div class="flex gap-2 mt-1 flex-wrap">
+              <button class="btn btn-primary text-xs py-1.5" onclick="saveCurrent()">💾 Lưu vào trang</button>
+              <button class="btn btn-outline text-xs py-1.5" onclick="rotateCurrent()">↺ Xoay 90°</button>
+              <button class="btn btn-outline text-xs py-1.5" onclick="resetFilters()">↺ Reset</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Instructions -->
+      <div class="bg-blue-50 border border-blue-100 rounded-xl p-3 text-sm text-blue-700">
+        <b>Hướng dẫn:</b> Bật camera → chụp ảnh hoặc upload → chỉnh sửa nếu cần → nhấn <b>Lưu vào trang</b> → sắp xếp lại bên phải → <b>Tạo PDF</b>.
+      </div>
+    </div>
+
+    <!-- RIGHT: Pages list -->
+    <div class="space-y-3">
+      <div class="flex items-center justify-between">
+        <div class="text-sm font-bold" style="color:var(--main)">Trang (<span id="pageCount">0</span>)</div>
+        <div class="text-xs text-gray-400">Kéo để đổi thứ tự</div>
+      </div>
+
+      <div id="pagesList" class="space-y-2 bg-gray-50 rounded-xl p-2 overflow-y-auto" style="max-height:500px;">
+        <div class="text-center text-gray-400 text-xs py-8" id="emptyMsg">Chưa có trang nào</div>
+      </div>
+
+      <button class="btn btn-green w-full justify-center" onclick="makePDF()">📄 Tạo PDF</button>
+      <button class="btn btn-outline w-full justify-center" onclick="downloadAllJPG()">🖼 Tải tất cả JPG</button>
+      <div class="text-xs text-gray-400">PDF xuất chuẩn A4. Chất lượng cao = file lớn hơn.</div>
+    </div>
+  </div>
+
+  <div class="mt-3 text-center text-xs text-gray-400">© 2026 — Xử lý hoàn toàn trên trình duyệt, không gửi dữ liệu lên máy chủ</div>
+</div>
+
+<!-- Hidden processing canvas -->
+<canvas id="procCanvas" style="display:none"></canvas>
+
+<script>
+// ===== STATE =====
+let pages = [];          // {id, imageData (dataURL), rotation}
+let currentImg = null;   // raw captured/uploaded ImageBitmap or Image
+let currentRotation = 0;
+let cameraActive = false;
+let cameraStream = null;
+let editingIdx = -1;     // page index currently loaded in editor (-1 = fresh capture)
+
+const video  = document.getElementById('video');
+const prevCv = document.getElementById('capturePreview');
+const prevCtx= prevCv.getContext('2d');
+const procCv = document.getElementById('procCanvas');
+const procCtx= procCv.getContext('2d');
+
+// ===== CAMERA =====
+async function toggleCamera(){
+  const btn = document.getElementById('startCamBtn');
+  if(cameraActive){ stopCamera(); btn.textContent='📷 Bật camera'; return; }
+  try{
+    cameraStream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:1920}}});
+    video.srcObject = cameraStream;
+    cameraActive = true;
+    btn.textContent = '⏹ Tắt camera';
+    document.getElementById('takePhotoBtn').disabled = false;
+  }catch(e){
+    alert('Không thể mở camera. Vui lòng cấp quyền hoặc thử lại.');
+  }
+}
+
+function stopCamera(){
+  if(cameraStream) cameraStream.getTracks().forEach(t=>t.stop());
+  video.srcObject = null; cameraActive = false;
+  document.getElementById('takePhotoBtn').disabled = true;
+}
+
+// ===== CAPTURE =====
+function takePhoto(){
+  if(!cameraActive) return;
+  procCv.width  = video.videoWidth;
+  procCv.height = video.videoHeight;
+  procCtx.drawImage(video, 0, 0);
+
+  const img = new Image();
+  img.onload = ()=>{ currentImg = img; currentRotation = 0; resetFilters(); loadToPreview(); };
+  img.src = procCv.toDataURL('image/jpeg', 0.95);
+  document.getElementById('editPageLabel').textContent = 'Ảnh vừa chụp';
+  editingIdx = -1;
+}
+
+// ===== UPLOAD =====
+function uploadImages(files){
+  [...files].forEach(file=>{
+    const reader = new FileReader();
+    reader.onload = ev=>{
+      const img = new Image();
+      img.onload = ()=>{
+        currentImg = img; currentRotation = 0; resetFilters(); loadToPreview();
+        document.getElementById('editPageLabel').textContent = file.name;
+        editingIdx = -1;
+        // Auto-save nếu đang upload nhiều file
+        if(files.length > 1) saveCurrent();
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+  document.getElementById('fileInput').value = '';
+}
+
+// ===== PREVIEW & FILTERS =====
+function loadToPreview(){
+  if(!currentImg) return;
+  const maxH = 190, maxW = prevCv.parentElement.clientWidth - 24 || 300;
+  const aspect = currentImg.naturalWidth / currentImg.naturalHeight;
+  let w = maxW, h = w / aspect;
+  if(h > maxH){ h = maxH; w = h * aspect; }
+  prevCv.width = w; prevCv.height = h;
+  applyFilters(prevCtx, prevCv, currentImg);
+}
+
+function applyPreview(){
+  document.getElementById('brVal').textContent = document.getElementById('brightness').value;
+  document.getElementById('ctVal').textContent = document.getElementById('contrast').value;
+  if(currentImg) applyFilters(prevCtx, prevCv, currentImg);
+}
+
+function applyFilters(ctx, cv, img){
+  const rot = currentRotation;
+  ctx.save();
+  ctx.clearRect(0, 0, cv.width, cv.height);
+  if(rot===90||rot===270){
+    // swap dimensions for 90/270
+    const tmp = cv.width; cv.width = cv.height; cv.height = tmp; // already ok for preview
+  }
+  ctx.translate(cv.width/2, cv.height/2);
+  ctx.rotate(rot * Math.PI / 180);
+  const dw = (rot===90||rot===270) ? cv.height : cv.width;
+  const dh = (rot===90||rot===270) ? cv.width : cv.height;
+  ctx.drawImage(img, -dw/2, -dh/2, dw, dh);
+  ctx.restore();
+
+  // pixel filters
+  const br = parseInt(document.getElementById('brightness').value);
+  const ct = parseInt(document.getElementById('contrast').value);
+  const gs = document.getElementById('grayscale').checked;
+  if(br!==0 || ct!==0 || gs){
+    const id = ctx.getImageData(0, 0, cv.width, cv.height);
+    const d  = id.data;
+    const factor = ct===0 ? 1 : (259*(ct+255))/(255*(259-ct));
+    for(let i=0;i<d.length;i+=4){
+      let r=d[i],g=d[i+1],b=d[i+2];
+      r=clamp(r+br); g=clamp(g+br); b=clamp(b+br);
+      r=clamp(factor*(r-128)+128); g=clamp(factor*(g-128)+128); b=clamp(factor*(b-128)+128);
+      if(gs){ const lum=0.299*r+0.587*g+0.114*b; r=g=b=lum; }
+      d[i]=r; d[i+1]=g; d[i+2]=b;
+    }
+    ctx.putImageData(id, 0, 0);
+  }
+}
+
+function clamp(v){ return Math.max(0,Math.min(255,Math.round(v))); }
+
+function rotateCurrent(){ currentRotation=(currentRotation+90)%360; loadToPreview(); }
+
+function resetFilters(){
+  document.getElementById('brightness').value=0;
+  document.getElementById('contrast').value=0;
+  document.getElementById('grayscale').checked=false;
+  document.getElementById('brVal').textContent='0';
+  document.getElementById('ctVal').textContent='0';
+  if(currentImg) loadToPreview();
+}
+
+// ===== SAVE TO PAGES =====
+function saveCurrent(){
+  if(!currentImg){ alert('Chưa có ảnh nào! Hãy chụp hoặc upload trước.'); return; }
+
+  // render at full quality
+  const targetW = parseInt(document.getElementById('qualitySelect').value) || 1754;
+  const aspect  = currentImg.naturalWidth / currentImg.naturalHeight;
+  let fw = targetW, fh = Math.round(targetW / aspect);
+  if(currentRotation===90||currentRotation===270){ const t=fw; fw=fh; fh=t; }
+
+  procCv.width = fw; procCv.height = fh;
+  procCtx.save();
+  procCtx.clearRect(0,0,fw,fh);
+  procCtx.translate(fw/2, fh/2);
+  procCtx.rotate(currentRotation*Math.PI/180);
+  const dw = (currentRotation===90||currentRotation===270)?fh:fw;
+  const dh = (currentRotation===90||currentRotation===270)?fw:fh;
+  procCtx.drawImage(currentImg, -dw/2, -dh/2, dw, dh);
+  procCtx.restore();
+
+  const br=parseInt(document.getElementById('brightness').value);
+  const ct=parseInt(document.getElementById('contrast').value);
+  const gs=document.getElementById('grayscale').checked;
+  if(br!==0||ct!==0||gs){
+    const id=procCtx.getImageData(0,0,fw,fh);
+    const d=id.data;
+    const factor=ct===0?1:(259*(ct+255))/(255*(259-ct));
+    for(let i=0;i<d.length;i+=4){
+      let r=d[i],g=d[i+1],b=d[i+2];
+      r=clamp(r+br);g=clamp(g+br);b=clamp(b+br);
+      r=clamp(factor*(r-128)+128);g=clamp(factor*(g-128)+128);b=clamp(factor*(b-128)+128);
+      if(gs){const lum=0.299*r+0.587*g+0.114*b;r=g=b=lum;}
+      d[i]=r;d[i+1]=g;d[i+2]=b;
+    }
+    procCtx.putImageData(id,0,0);
+  }
+
+  const dataURL = procCv.toDataURL('image/jpeg', 0.9);
+  const id = 'pg_' + Date.now();
+
+  if(editingIdx >= 0){
+    pages[editingIdx].imageData = dataURL;
+    editingIdx = -1;
+  } else {
+    pages.push({id, imageData: dataURL});
+  }
+  renderPageList();
+}
+
+// ===== PAGE LIST =====
+let sortable;
+function renderPageList(){
+  const list = document.getElementById('pagesList');
+  const empty= document.getElementById('emptyMsg');
+  document.getElementById('pageCount').textContent = pages.length;
+  if(pages.length===0){
+    list.innerHTML='<div class="text-center text-gray-400 text-xs py-8" id="emptyMsg">Chưa có trang nào</div>';
+    return;
+  }
+  list.innerHTML = pages.map((pg,i)=>`
+    <div class="page-item bg-white border rounded-xl p-2 shadow-sm flex items-center gap-2" data-id="${pg.id}">
+      <img src="${pg.imageData}" class="w-14 h-18 object-cover rounded-md flex-shrink-0 border" style="height:72px;">
+      <div class="flex-1 min-w-0">
+        <div class="font-medium text-xs text-gray-700">Trang ${i+1}</div>
+        <div class="flex gap-1 mt-1 flex-wrap">
+          <button class="text-xs px-2 py-0.5 rounded border border-blue-200 text-blue-600 hover:bg-blue-50" onclick="editPage(${i})">✏️ Sửa</button>
+          <button class="text-xs px-2 py-0.5 rounded border border-red-200 text-red-500 hover:bg-red-50" onclick="deletePage(${i})">🗑</button>
+        </div>
+      </div>
+      <div class="text-gray-300 text-lg select-none">⠿</div>
+    </div>`).join('');
+
+  if(sortable) sortable.destroy();
+  sortable = new Sortable(list, {
+    animation: 150,
+    ghostClass: 'sortable-chosen',
+    handle: undefined,
+    onEnd: ()=>{
+      const newOrder = [...list.querySelectorAll('.page-item')].map(el=>el.dataset.id);
+      pages = newOrder.map(id=>pages.find(p=>p.id===id));
+      renderPageList();
+    }
+  });
+}
+
+function deletePage(i){
+  if(confirm(`Xóa trang ${i+1}?`)){ pages.splice(i,1); renderPageList(); }
+}
+
+function editPage(i){
+  const img = new Image();
+  img.onload = ()=>{
+    currentImg = img; currentRotation = 0; resetFilters(); loadToPreview();
+    document.getElementById('editPageLabel').textContent = `Trang ${i+1} (đang sửa)`;
+    editingIdx = i;
+  };
+  img.src = pages[i].imageData;
+}
+
+function clearAllPages(){
+  if(pages.length===0) return;
+  if(confirm('Xóa tất cả trang?')){ pages=[]; renderPageList(); }
+}
+
+// ===== GENERATE PDF =====
+async function makePDF(){
+  if(pages.length===0){ alert('Chưa có trang nào!'); return; }
+  const {jsPDF} = window.jspdf;
+  const pdf = new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  const A4W=210, A4H=297;
+  for(let i=0;i<pages.length;i++){
+    if(i>0) pdf.addPage();
+    const img = new Image();
+    await new Promise(res=>{ img.onload=res; img.src=pages[i].imageData; });
+    const iw=img.naturalWidth, ih=img.naturalHeight;
+    let dw=A4W, dh=(ih/iw)*A4W;
+    if(dh>A4H){ dh=A4H; dw=(iw/ih)*A4H; }
+    const ox=(A4W-dw)/2, oy=(A4H-dh)/2;
+    pdf.addImage(pages[i].imageData,'JPEG',ox,oy,dw,dh,undefined,'FAST');
+  }
+  pdf.save('scan_tailieu_'+Date.now()+'.pdf');
+}
+
+// ===== DOWNLOAD ALL JPG =====
+function downloadAllJPG(){
+  if(pages.length===0){ alert('Chưa có trang nào!'); return; }
+  pages.forEach((pg,i)=>{
+    const a=document.createElement('a');
+    a.href=pg.imageData;
+    a.download=`trang_${String(i+1).padStart(2,'0')}.jpg`;
+    a.click();
+  });
+}
+
+// Init
+renderPageList();
+</script>
+</body>
+</html>

@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trực Quan Hóa Mặt Cắt Dọc</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --navy: #0F2744;
+            --navy-light: #1A3A5C;
+            --blue: #1565C0;
+            --accent: #00B4D8;
+            --accent2: #0096C7;
+            --green: #2E7D32;
+            --red: #C62828;
+            --orange: #E65100;
+            --purple: #6A1B9A;
+            --slate: #263238;
+            --bg: #F0F4F8;
+            --surface: #FFFFFF;
+            --border: #CFD8DC;
+            --text: #1C2B3A;
+            --text-2: #607D8B;
+            --shadow-sm: 0 1px 4px rgba(0,0,0,0.12);
+            --shadow-md: 0 4px 16px rgba(0,0,0,0.16);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Be Vietnam Pro', 'Segoe UI', sans-serif;
+            display: flex; flex-direction: column; height: 100vh;
+            background: var(--bg); overflow: hidden; color: var(--text);
+        }
+
+        /* ── TOOLBAR ── */
+        .toolbar {
+            background: var(--navy);
+            padding: 0 16px;
+            display: flex; align-items: center; gap: 6px;
+            height: 52px; flex-shrink: 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.35);
+            z-index: 1001;
+        }
+        .toolbar-logo {
+            font-size: 15px; font-weight: 700; color: white;
+            display: flex; align-items: center; gap: 8px;
+            margin-right: 10px; letter-spacing: 0.3px;
+        }
+        .toolbar-logo .logo-icon {
+            width: 30px; height: 30px; background: var(--accent);
+            border-radius: 8px; display: flex; align-items: center; justify-content: center;
+            font-size: 14px; color: white;
+        }
+        .toolbar-sep { width: 1px; height: 28px; background: rgba(255,255,255,0.15); margin: 0 4px; }
+        .tb-btn {
+            padding: 6px 13px; color: white; border: none; border-radius: 7px;
+            cursor: pointer; font-weight: 600; font-size: 12.5px;
+            display: flex; align-items: center; gap: 6px; white-space: nowrap;
+            transition: all 0.18s; font-family: inherit;
+        }
+        .tb-btn:hover { filter: brightness(1.18); transform: translateY(-1px); }
+        .tb-btn:active { transform: translateY(0); filter: brightness(0.95); }
+        .tb-btn-new  { background: var(--green); }
+        .tb-btn-draw { background: var(--accent2); }
+        .tb-btn-draw.active {
+            background: var(--red);
+            box-shadow: 0 0 0 3px rgba(198,40,40,0.35);
+            animation: pulse-draw 1.8s infinite;
+        }
+        @keyframes pulse-draw {
+            0%,100% { box-shadow: 0 0 0 3px rgba(198,40,40,0.3); }
+            50%      { box-shadow: 0 0 0 7px rgba(198,40,40,0); }
+        }
+        .tb-btn-import { background: var(--purple); }
+        .tb-btn-cad    { background: #37474F; }
+        .tb-btn-del    { background: var(--red); }
+        .toolbar-hint {
+            margin-left: auto; font-size: 11.5px;
+            color: rgba(255,255,255,0.6);
+            display: flex; align-items: center; gap: 5px;
+            background: rgba(255,255,255,0.08);
+            padding: 5px 11px; border-radius: 20px;
+        }
+        .toolbar-hint i { color: #FFD54F; }
+
+        /* ── LAYOUT ── */
+        .body-wrap { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+        .main-row  { display: flex; flex: 1; overflow: hidden; }
+
+        /* ── SIDEBAR ── */
+        .sidebar {
+            width: 290px; min-width: 290px;
+            background: var(--slate);
+            display: flex; flex-direction: column;
+            box-shadow: 2px 0 12px rgba(0,0,0,0.25);
+        }
+        .sidebar-head {
+            padding: 10px 10px 0;
+            background: var(--navy-light);
+        }
+        .sidebar-search-row {
+            display: flex; gap: 6px; margin-bottom: 10px;
+        }
+        .sidebar-input {
+            flex: 1; padding: 7px 12px; border: none; outline: none;
+            border-radius: 20px; font-size: 12.5px;
+            background: rgba(255,255,255,0.12); color: white;
+            font-family: inherit;
+        }
+        .sidebar-input::placeholder { color: rgba(255,255,255,0.42); }
+        .sidebar-input:focus { background: rgba(255,255,255,0.2); }
+        .sidebar-sbtn {
+            border: none; background: var(--accent); color: white;
+            padding: 0 13px; border-radius: 20px; cursor: pointer; font-size: 12px;
+        }
+        .sidebar-meta {
+            padding: 5px 12px 6px;
+            font-size: 11px; color: rgba(255,255,255,0.38);
+            border-top: 1px solid rgba(255,255,255,0.08);
+        }
+        .sb-list { flex: 1; overflow-y: auto; }
+        .sb-list::-webkit-scrollbar { width: 3px; }
+        .sb-list::-webkit-scrollbar-thumb { background: #546E7A; border-radius: 2px; }
+
+        .sb-item {
+            padding: 10px 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            cursor: pointer; transition: background 0.15s;
+            border-left: 3px solid transparent;
+        }
+        .sb-item:hover  { background: rgba(255,255,255,0.06); }
+        .sb-item.active { border-left-color: var(--accent); background: rgba(0,180,216,0.1); }
+
+        .sb-actions { display: flex; gap: 3px; margin-bottom: 7px; }
+        .sb-act {
+            background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 5px; padding: 4px 8px; cursor: pointer;
+            color: rgba(255,255,255,0.65); font-size: 11.5px; transition: all 0.15s;
+        }
+        .sb-act:hover { background: rgba(255,255,255,0.15); color: white; }
+        .sb-act.danger:hover { background: rgba(198,40,40,0.4); color: #FFCDD2; }
+
+        .sb-title {
+            font-weight: 600; color: white; font-size: 13.5px;
+            display: flex; align-items: center; gap: 5px;
+            padding: 2px 4px; cursor: text;
+        }
+        .sb-title:hover .rename-hint { opacity: 1; }
+        .rename-hint { opacity: 0; font-size: 10px; color: var(--accent); transition: 0.2s; }
+        .sb-rename-input {
+            background: rgba(255,255,255,0.13); border: 1px solid var(--accent);
+            color: white; border-radius: 4px; padding: 2px 7px;
+            font-size: 13.5px; font-weight: 600; width: 100%; outline: none; font-family: inherit;
+        }
+        .sb-meta {
+            font-size: 10.5px; color: rgba(255,255,255,0.38);
+            display: flex; justify-content: space-between; align-items: center; margin-top: 5px;
+        }
+        .sb-badge {
+            background: rgba(0,180,216,0.22); color: var(--accent);
+            padding: 2px 8px; border-radius: 10px; font-size: 10.5px; font-weight: 600;
+        }
+        .empty-state {
+            padding: 40px 20px; text-align: center; color: rgba(255,255,255,0.28);
+        }
+        .empty-state i { font-size: 36px; margin-bottom: 10px; display: block; }
+        .empty-state p  { font-size: 12.5px; line-height: 1.6; }
+
+        /* ── MAP ── */
+        #map { flex: 1; z-index: 1; }
+
+        /* ── CHART PANEL ── */
+        #chart-panel {
+            width: 400px; min-width: 380px;
+            background: var(--surface);
+            display: flex; flex-direction: column;
+            box-shadow: -3px 0 12px rgba(0,0,0,0.12);
+            z-index: 2;
+        }
+        .chart-head {
+            padding: 12px 14px 10px;
+            border-bottom: 1px solid var(--border);
+            display: flex; flex-direction: column; gap: 8px;
+        }
+        .chart-head-row1 { display: flex; justify-content: space-between; align-items: flex-start; }
+        .chart-name { font-size: 13.5px; font-weight: 700; color: var(--blue); }
+        .chart-sub  { font-size: 11px; color: var(--text-2); margin-top: 1px; }
+        .chart-controls { display: flex; gap: 6px; align-items: center; }
+        .scale-select {
+            padding: 4px 8px; border-radius: 6px;
+            border: 1px solid var(--border); font-size: 11.5px;
+            font-weight: 600; color: var(--text); cursor: pointer; outline: none;
+            background: white; font-family: inherit;
+        }
+        .btn-zoom-reset {
+            background: var(--slate); color: white; border: none;
+            padding: 4px 10px; border-radius: 6px; cursor: pointer;
+            font-size: 11.5px; display: none; align-items: center; gap: 4px;
+            font-family: inherit; white-space: nowrap;
+        }
+        .btn-zoom-reset:hover { background: #1C313A; }
+        .chart-body { flex: 1; position: relative; padding: 8px; min-height: 0; }
+
+        /* ── TABLE ── */
+        .table-wrap {
+            height: 26%; min-height: 110px;
+            background: var(--surface); overflow-y: auto;
+            border-top: 2px solid var(--bg);
+        }
+        .table-wrap::-webkit-scrollbar { width: 5px; }
+        .table-wrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+        table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+        thead th {
+            background: var(--navy); color: white;
+            padding: 7px 6px; position: sticky; top: 0; z-index: 5;
+            font-size: 10.5px; letter-spacing: 0.2px; text-align: center;
+            font-weight: 600;
+        }
+        tbody tr { cursor: pointer; transition: background 0.12s; }
+        tbody tr:nth-child(even) { background: #F7FAFC; }
+        tbody tr:hover   { background: #E3F2FD; }
+        tbody tr.hi      { background: #FFF176 !important; font-weight: 600; }
+        tbody td { border-bottom: 1px solid #ECEFF1; padding: 5px 6px; text-align: center; }
+        td.name-col { text-align: left; padding-left: 10px; font-weight: 600; color: var(--blue); }
+        .del-pt-btn {
+            background: none; border: none; cursor: pointer;
+            color: #EF9A9A; font-size: 13px; transition: color 0.15s; padding: 2px 5px;
+        }
+        .del-pt-btn:hover { color: var(--red); }
+
+        /* ── STATUS BAR ── */
+        .status-bar {
+            background: var(--navy-light); color: rgba(255,255,255,0.6);
+            padding: 3px 16px; font-size: 11px; flex-shrink: 0;
+            display: flex; align-items: center; gap: 18px;
+        }
+        .st { display: flex; align-items: center; gap: 4px; }
+        .st i { color: var(--accent); font-size: 10px; }
+        #st-mode i  { color: #FFD54F; }
+        #st-mode.drawing { color: #FF7043; }
+        #st-mode.drawing i { color: #FF7043; }
+    </style>
+</head>
+<body>
+
+<!-- TOOLBAR -->
+<div class="toolbar">
+    <div class="toolbar-logo">
+        <div class="logo-icon"><i class="fas fa-mountain"></i></div>
+        Mặt Cắt Dọc
+    </div>
+    <div class="toolbar-sep"></div>
+    <button class="tb-btn tb-btn-new"    onclick="createNewSection()"><i class="fas fa-plus"></i> Tuyến Mới</button>
+    <button class="tb-btn tb-btn-draw" id="btn-draw"><i class="fas fa-pen"></i> Vẽ Tuyến</button>
+    <div class="toolbar-sep"></div>
+    <input type="file" id="file-upload" accept=".csv,.xlsx,.kml,.kmz" style="display:none" onchange="handleFileUpload(event)">
+    <button class="tb-btn tb-btn-import" onclick="document.getElementById('file-upload').click()"><i class="fas fa-file-upload"></i> Nhập File</button>
+    <button class="tb-btn tb-btn-cad"    onclick="exportCurrentToCAD()"><i class="fas fa-drafting-compass"></i> Xuất DXF</button>
+    <button class="tb-btn tb-btn-del"    onclick="clearAllData()"><i class="fas fa-trash-alt"></i> Xóa Tất Cả</button>
+    <div class="toolbar-hint">
+        <i class="fas fa-info-circle"></i> Click điểm trên bản đồ để ghim lên biểu đồ
+    </div>
+</div>
+
+<div class="body-wrap">
+  <div class="main-row">
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+        <div class="sidebar-head">
+            <div class="sidebar-search-row">
+                <input id="search-input" class="sidebar-input" type="text" placeholder="🔍 Tìm kiếm mặt cắt...">
+                <button class="sidebar-sbtn" onclick="renderSidebar()"><i class="fas fa-search"></i></button>
+            </div>
+        </div>
+        <div class="sidebar-meta" id="sb-meta">0 mặt cắt</div>
+        <div class="sb-list" id="sb-list"></div>
+    </div>
+
+    <!-- MAP -->
+    <div id="map"></div>
+
+    <!-- CHART -->
+    <div id="chart-panel">
+        <div class="chart-head">
+            <div class="chart-head-row1">
+                <div>
+                    <div class="chart-name" id="chart-title">Chưa chọn mặt cắt</div>
+                    <div class="chart-sub"  id="chart-sub">Tạo tuyến mới hoặc chọn từ danh sách bên trái</div>
+                </div>
+                <div class="chart-controls">
+                    <select id="scale-ratio" class="scale-select" onchange="updateUI()">
+                        <option value="auto">Tự động</option>
+                        <option value="1">1:1</option>
+                        <option value="5">5× cao độ</option>
+                        <option value="10">10× cao độ</option>
+                        <option value="20">20× cao độ</option>
+                    </select>
+                    <button class="btn-zoom-reset" id="btn-zoom-reset" onclick="resetChartZoom()">
+                        <i class="fas fa-compress-alt"></i> Reset
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div class="chart-body">
+            <canvas id="elChart"></canvas>
+        </div>
+    </div>
+
+  </div><!-- /main-row -->
+
+  <!-- TABLE -->
+  <div class="table-wrap">
+      <table id="data-table">
+          <thead>
+              <tr>
+                  <th>TT</th><th>Tên vị trí</th><th>Vĩ độ</th><th>Kinh độ</th>
+                  <th>Cao độ (m)</th><th>K/C điểm (m)</th><th>Tổng dài (m)</th><th></th>
+              </tr>
+          </thead>
+          <tbody></tbody>
+      </table>
+  </div>
+</div><!-- /body-wrap -->
+
+<!-- STATUS BAR -->
+<div class="status-bar">
+    <span class="st"><i class="fas fa-layer-group"></i> <span id="st-total">0 tuyến</span></span>
+    <span class="st"><i class="fas fa-map-marker-alt"></i> <span id="st-pts">0 điểm</span></span>
+    <span class="st"><i class="fas fa-ruler-horizontal"></i> <span id="st-len">0 m</span></span>
+    <span class="st" id="st-mode"><i class="fas fa-mouse-pointer"></i> Chế độ xem</span>
+</div>
+
+<!-- SCRIPTS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-zoom/2.0.1/chartjs-plugin-zoom.min.js"></script>
+
+<script>
+// ==============================
+// BẢN ĐỒ
+// ==============================
+const map = L.map('map').setView([14.127, 107.925], 13);
+L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+    maxZoom: 20, subdomains: ['mt0','mt1','mt2','mt3'], attribution: '© Google'
+}).addTo(map);
+
+let mapGroup = L.layerGroup().addTo(map);
+let mapMarkers = [];
+let isDrawing = false;
+let chartDataGlobal = [];
+
+// ==============================
+// BIỂU ĐỒ
+// ==============================
+const ctx = document.getElementById('elChart').getContext('2d');
+const elChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+        datasets: [
+            {
+                label: 'Cao độ (m)',
+                data: [],
+                borderColor: '#5D4037', borderWidth: 2.5,
+                backgroundColor: 'rgba(121,85,72,0.22)',
+                fill: true, tension: 0.3,
+                pointRadius: 4,
+                pointBackgroundColor: '#795548',
+                pointHoverRadius: 8,
+                pointHoverBackgroundColor: '#E53935'
+            },
+            {
+                label: 'Điểm chọn',
+                data: [],
+                pointStyle: 'rectRot', pointRadius: 12,
+                backgroundColor: '#E53935', borderColor: '#FFF176', borderWidth: 3,
+                showLine: false, pointHoverRadius: 15
+            }
+        ]
+    },
+    options: {
+        responsive: true, maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+
+        onClick: (evt, els) => {
+            if (els.length > 0 && els[0].datasetIndex === 0) highlightRow(els[0].index);
+        },
+        onHover: (evt, els) => {
+            if (els.length > 0 && els[0].datasetIndex === 0) {
+                const idx = els[0].index;
+                mapMarkers.forEach((m, i) => {
+                    if (i === idx) { m.setStyle({ color:'#E53935', fillColor:'#E53935', radius:9 }); m.bringToFront(); }
+                    else m.setStyle({ color:'#1565C0', fillColor:'#42A5F5', radius:5, fillOpacity:0.9 });
+                });
+            }
+        },
+
+        scales: {
+            x: {
+                type: 'linear',
+                title: { display: true, text: 'Chiều dài tuyến (m)', font: { size:11 } },
+                ticks: { callback: v => v + 'm', font: { size:10 } },
+                grid: { color: 'rgba(0,0,0,0.05)' }
+            },
+            y: {
+                title: { display: true, text: 'Cao độ (m)', font: { size:11 } },
+                ticks: { callback: v => v + 'm', font: { size:10 } },
+                grid: { color: 'rgba(0,0,0,0.07)' }
+            }
+        },
+        plugins: {
+            legend: { display: false },
+            tooltip: {
+                backgroundColor: 'rgba(15,39,68,0.93)',
+                titleFont: { size:13, weight:'bold' },
+                bodyFont: { size:12 }, padding: 11,
+                callbacks: {
+                    title: ctx => {
+                        const r = ctx[0].raw;
+                        return (r && r.ptName) ? r.ptName : 'Điểm đang ghim';
+                    },
+                    label: ctx => {
+                        if (ctx.datasetIndex === 0)
+                            return [`📍 Khoảng cách: ${Math.round(ctx.parsed.x)} m`, `⛰  Cao độ: ${ctx.parsed.y} m`];
+                        return `Điểm chọn: ${ctx.parsed.y} m`;
+                    }
+                }
+            },
+            zoom: {
+                pan:  { enabled:true,  mode:'x', onPan:  showReset },
+                zoom: { wheel:{enabled:true}, pinch:{enabled:true}, mode:'x', onZoom: showReset }
+            }
+        }
+    }
+});
+
+function showReset() { document.getElementById('btn-zoom-reset').style.display = 'inline-flex'; }
+function resetChartZoom() { elChart.resetZoom(); document.getElementById('btn-zoom-reset').style.display = 'none'; }
+
+// ==============================
+// DỮ LIỆU
+// ==============================
+let db = JSON.parse(localStorage.getItem('topo_data') || '[]');
+let activeId = null;
+
+function saveToDB() { localStorage.setItem('topo_data', JSON.stringify(db)); }
+function getMockElev(lat, lng) { return Math.round(740 + Math.sin(lat*10000)*5 + Math.cos(lng*10000)*5); }
+
+// ==============================
+// SIDEBAR
+// ==============================
+document.getElementById('search-input').addEventListener('input', renderSidebar);
+document.getElementById('search-input').addEventListener('keydown', e => { if(e.key==='Enter') renderSidebar(); });
+
+function renderSidebar() {
+    const q = document.getElementById('search-input').value.toLowerCase().trim();
+    const filtered = db.filter(s => !q || s.name.toLowerCase().includes(q));
+    document.getElementById('sb-meta').textContent = filtered.length + ' / ' + db.length + ' mặt cắt';
+
+    const list = document.getElementById('sb-list');
+    list.innerHTML = '';
+
+    if (!filtered.length) {
+        list.innerHTML = `<div class="empty-state">
+            <i class="fas fa-route"></i>
+            <p>${db.length===0 ? 'Chưa có dữ liệu.<br>Bấm <b>Tuyến Mới</b> để bắt đầu.' : 'Không tìm thấy kết quả.'}</p>
+        </div>`;
+        return;
+    }
+
+    [...filtered].sort((a,b) => b.createdAt - a.createdAt).forEach(sec => {
+        const date = new Date(sec.createdAt).toLocaleString('vi-VN');
+        const dist = sec.points.length ? Math.round(sec.points[sec.points.length-1].totalDistance) : 0;
+        const isAct = sec.id === activeId;
+
+        const el = document.createElement('div');
+        el.className = 'sb-item' + (isAct ? ' active' : '');
+        el.id = 'si-' + sec.id;
+        el.onclick = () => loadSection(sec.id);
+        el.innerHTML = `
+            <div class="sb-actions" onclick="event.stopPropagation()">
+                <button class="sb-act" title="Vẽ tiếp" onclick="actionEdit('${sec.id}',event)"><i class="fas fa-pen"></i></button>
+                <button class="sb-act" title="Sao chép" onclick="actionCopy('${sec.id}',event)"><i class="far fa-copy"></i></button>
+                <button class="sb-act" title="Tải Excel" onclick="actionDownload('${sec.id}',event)"><i class="fas fa-file-excel" style="color:#66BB6A"></i></button>
+                <button class="sb-act" title="Xuất DXF" onclick="actionExportDXF('${sec.id}',event)"><i class="fas fa-drafting-compass" style="color:#90CAF9"></i></button>
+                <button class="sb-act danger" title="Xóa" onclick="actionDelete('${sec.id}',event)"><i class="far fa-trash-alt" style="color:#EF9A9A"></i></button>
+            </div>
+            <div class="sb-title" id="st-${sec.id}" ondblclick="startRename('${sec.id}')">
+                <span id="stx-${sec.id}">${sec.name}</span>
+                <span class="rename-hint"><i class="fas fa-pencil-alt"></i> đổi tên</span>
+            </div>
+            <div class="sb-meta">
+                <span><i class="far fa-clock"></i> ${date}</span>
+                <span class="sb-badge">${sec.points.length} điểm · ${dist} m</span>
+            </div>`;
+        list.appendChild(el);
+    });
+}
+
+function startRename(id) {
+    const wrap = document.getElementById('st-' + id);
+    const sec  = db.find(s => s.id === id);
+    if (!sec || !wrap) return;
+    wrap.innerHTML = `<input class="sb-rename-input" id="ri-${id}" value="${sec.name}"
+        onclick="event.stopPropagation()"
+        onkeydown="if(event.key==='Enter'){commitRename('${id}');}if(event.key==='Escape'){renderSidebar();}"
+        onblur="commitRename('${id}')" />`;
+    const inp = document.getElementById('ri-'+id);
+    if (inp) { inp.focus(); inp.select(); }
+}
+
+function commitRename(id) {
+    const inp = document.getElementById('ri-'+id);
+    if (!inp) return;
+    const sec = db.find(s => s.id === id);
+    if (sec) {
+        const v = inp.value.trim();
+        if (v) sec.name = v;
+        saveToDB(); updateUI();
+    }
+}
+
+// ==============================
+// UPDATE UI
+// ==============================
+function updateUI() {
+    mapGroup.clearLayers();
+    mapMarkers = [];
+    document.querySelector('#data-table tbody').innerHTML = '';
+    document.getElementById('btn-zoom-reset').style.display = 'none';
+
+    const sec = db.find(s => s.id === String(activeId));
+
+    // Status bar
+    document.getElementById('st-total').textContent = db.length + ' tuyến';
+    const modeEl = document.getElementById('st-mode');
+    if (isDrawing) {
+        modeEl.className = 'st drawing';
+        modeEl.innerHTML = '<i class="fas fa-pen"></i> Đang vẽ – click bản đồ để thêm điểm';
+    } else {
+        modeEl.className = 'st';
+        modeEl.innerHTML = '<i class="fas fa-mouse-pointer"></i> Chế độ xem';
+    }
+
+    if (!sec || sec.points.length === 0) {
+        elChart.data.datasets[0].data = [];
+        elChart.data.datasets[1].data = [];
+        elChart.update();
+        document.getElementById('chart-title').textContent = sec ? sec.name : 'Chưa chọn mặt cắt';
+        document.getElementById('chart-sub').textContent = sec ? 'Chưa có điểm – hãy vẽ lên bản đồ' : 'Tạo tuyến mới hoặc chọn từ danh sách bên trái';
+        document.getElementById('st-pts').textContent = '0 điểm';
+        document.getElementById('st-len').textContent = '0 m';
+        renderSidebar(); return;
+    }
+
+    const pts = sec.points;
+    const last = pts[pts.length-1];
+    document.getElementById('chart-title').textContent = sec.name;
+    document.getElementById('chart-sub').textContent = pts.length + ' điểm · ' + Math.round(last.totalDistance) + ' m';
+    document.getElementById('st-pts').textContent = pts.length + ' điểm';
+    document.getElementById('st-len').textContent = Math.round(last.totalDistance) + ' m';
+
+    // Polyline
+    L.polyline(pts.map(p => [p.lat, p.lng]), { color:'#00E5FF', weight:3.5, opacity:0.9 }).addTo(mapGroup);
+
+    chartDataGlobal = pts.map(p => ({ x: Math.round(p.totalDistance), y: p.elevation, ptName: p.pointName }));
+
+    // Markers
+    if (pts.length <= 500) {
+        pts.forEach((p, i) => {
+            const m = L.circleMarker([p.lat, p.lng], {
+                radius:5, color:'#1565C0', fillColor:'#42A5F5', fillOpacity:0.9, weight:2
+            }).bindTooltip(`<b>${p.pointName}</b><br>Cao độ: ${p.elevation} m<br>Cộng dồn: ${Math.round(p.totalDistance)} m`, { sticky:true });
+
+            m.on('click', function(e) {
+                L.DomEvent.stopPropagation(e);
+                mapMarkers.forEach((mk, j) => {
+                    if (j===i) mk.setStyle({ color:'#E53935', fillColor:'#E53935', radius:9 });
+                    else mk.setStyle({ color:'#1565C0', fillColor:'#42A5F5', radius:5, fillOpacity:0.9 });
+                });
+                this.bringToFront();
+                elChart.data.datasets[1].data = [chartDataGlobal[i]];
+                try {
+                    elChart.setActiveElements([{ datasetIndex:0, index:i }]);
+                    elChart.tooltip.setActiveElements([{ datasetIndex:0, index:i }], {x:0,y:0});
+                } catch(_) {}
+                elChart.update();
+                highlightRow(i);
+            });
+
+            m.addTo(mapGroup);
+            mapMarkers.push(m);
+        });
+    }
+
+    elChart.data.datasets[0].data = chartDataGlobal;
+    elChart.data.datasets[0].pointRadius = pts.length > 50 ? 0 : 4;
+    elChart.data.datasets[1].data = [];
+
+    // Scale
+    const ratio = document.getElementById('scale-ratio').value;
+    const elevs = pts.map(p => p.elevation);
+    const minEl = Math.min(...elevs), maxEl = Math.max(...elevs);
+    const midEl = (minEl + maxEl) / 2;
+    const yOpt  = elChart.options.scales.y;
+
+    if (ratio === 'auto' || last.totalDistance === 0) {
+        delete yOpt.min; delete yOpt.max;
+        const buf = Math.max((maxEl-minEl)*0.2, 5);
+        yOpt.suggestedMin = minEl - buf; yOpt.suggestedMax = maxEl + buf;
+    } else {
+        const Ex = parseFloat(ratio);
+        const ca = elChart.chartArea;
+        const w  = ca ? ca.width  : document.getElementById('elChart').clientWidth  - 60;
+        const h  = ca ? ca.height : document.getElementById('elChart').clientHeight - 60;
+        if (w > 0 && h > 0) {
+            let range = (last.totalDistance * h) / (w * Ex);
+            if (range < (maxEl-minEl)) range = (maxEl-minEl) * 1.1;
+            yOpt.min = midEl - range/2;
+            yOpt.max = midEl + range/2;
+        }
+    }
+    elChart.update();
+    elChart.resetZoom();
+
+    // Table
+    const tbody = document.querySelector('#data-table tbody');
+    pts.forEach((p, i) => {
+        const tr = document.createElement('tr');
+        tr.id = 'tr-' + i;
+        tr.innerHTML = `<td>${i+1}</td>
+            <td class="name-col">${p.pointName}</td>
+            <td>${p.lat.toFixed(6)}</td>
+            <td>${p.lng.toFixed(6)}</td>
+            <td><b>${p.elevation}</b></td>
+            <td>${Math.round(p.distanceToPrev)}</td>
+            <td>${Math.round(p.totalDistance)}</td>
+            <td><button class="del-pt-btn" title="Xóa điểm" onclick="deletePoint(${i},event)"><i class="fas fa-times"></i></button></td>`;
+        tr.onclick = () => {
+            highlightRow(i);
+            if (mapMarkers[i]) {
+                mapMarkers.forEach((mk,j) => {
+                    if(j===i) mk.setStyle({color:'#E53935',fillColor:'#E53935',radius:9});
+                    else mk.setStyle({color:'#1565C0',fillColor:'#42A5F5',radius:5,fillOpacity:0.9});
+                });
+                mapMarkers[i].bringToFront();
+                map.panTo([p.lat, p.lng]);
+            }
+            elChart.data.datasets[1].data = [chartDataGlobal[i]];
+            try {
+                elChart.setActiveElements([{datasetIndex:0,index:i}]);
+            } catch(_) {}
+            elChart.update();
+        };
+        tbody.appendChild(tr);
+    });
+
+    renderSidebar();
+}
+
+function highlightRow(idx) {
+    document.querySelectorAll('#data-table tbody tr').forEach(r => r.classList.remove('hi'));
+    const row = document.getElementById('tr-' + idx);
+    if (row) { row.classList.add('hi'); row.scrollIntoView({ block:'nearest', behavior:'smooth' }); }
+}
+
+function deletePoint(idx, e) {
+    if (e) e.stopPropagation();
+    const sec = db.find(s => s.id === activeId);
+    if (!sec) return;
+    sec.points.splice(idx, 1);
+    // Recalculate distances
+    let total = 0;
+    sec.points.forEach((p, i) => {
+        if (i === 0) { p.distanceToPrev = 0; p.totalDistance = 0; }
+        else {
+            const prev = sec.points[i-1];
+            p.distanceToPrev = map.distance([prev.lat, prev.lng], [p.lat, p.lng]);
+            total = prev.totalDistance + p.distanceToPrev;
+            p.totalDistance = total;
+        }
+    });
+    saveToDB(); updateUI();
+}
+
+// ==============================
+// VẼ THỦ CÔNG
+// ==============================
+map.on('click', function(e) {
+    if (!isDrawing) return;
+    if (!activeId) { alert("Vui lòng chọn tuyến hoặc tạo tuyến mới trước!"); return; }
+    const sec = db.find(s => s.id === activeId);
+    const { lat, lng } = e.latlng;
+    const elevation = getMockElev(lat, lng);
+    let distPrev = 0, totalDist = 0;
+    if (sec.points.length > 0) {
+        const prev = sec.points[sec.points.length-1];
+        distPrev  = map.distance([prev.lat, prev.lng], [lat, lng]);
+        totalDist = prev.totalDistance + distPrev;
+    }
+    sec.points.push({ pointName: 'Điểm ' + (sec.points.length+1), lat, lng, elevation, distanceToPrev: distPrev, totalDistance: totalDist });
+    saveToDB(); updateUI();
+});
+
+function setDrawMode(on) {
+    isDrawing = on;
+    const btn = document.getElementById('btn-draw');
+    if (on) {
+        btn.classList.add('active');
+        btn.innerHTML = '<i class="fas fa-stop-circle"></i> Dừng Vẽ';
+    } else {
+        btn.classList.remove('active');
+        btn.innerHTML = '<i class="fas fa-pen"></i> Vẽ Tuyến';
+    }
+    map.getContainer().style.cursor = on ? 'crosshair' : '';
+    updateUI();
+}
+
+document.getElementById('btn-draw').addEventListener('click', function() {
+    if (!activeId) { alert("Vui lòng chọn tuyến hoặc tạo tuyến mới trước!"); return; }
+    setDrawMode(!isDrawing);
+});
+
+// ==============================
+// CÁC THAO TÁC
+// ==============================
+function createNewSection() {
+    const id = Date.now().toString();
+    db.push({ id, name: 'Tuyến cắt ' + id.slice(-4), createdAt: Date.now(), points: [] });
+    activeId = id;
+    saveToDB(); setDrawMode(true);
+}
+
+function loadSection(id) {
+    activeId = String(id);
+    setDrawMode(false);
+    const sec = db.find(s => s.id === id);
+    if (sec && sec.points.length > 0)
+        map.fitBounds(L.latLngBounds(sec.points.map(p => [p.lat, p.lng])), {padding:[50,50]});
+}
+
+function actionEdit(id, e) {
+    if (e) e.stopPropagation();
+    activeId = String(id);
+    setDrawMode(true);
+}
+
+function actionDelete(id, e) {
+    if (e) { e.stopPropagation(); e.preventDefault(); }
+    if (!confirm('Xóa mặt cắt này?')) return;
+    const idx = db.findIndex(s => s.id === String(id));
+    if (idx > -1) db.splice(idx, 1);
+    if (activeId === String(id)) { activeId = null; setDrawMode(false); }
+    saveToDB(); updateUI();
+}
+
+function actionCopy(id, e) {
+    if (e) e.stopPropagation();
+    const sec = db.find(s => s.id === String(id));
+    if (!sec) return;
+    const newId = Date.now().toString();
+    db.push({ id:newId, name: sec.name+' (Copy)', createdAt: Date.now(), points: JSON.parse(JSON.stringify(sec.points)) });
+    activeId = newId; saveToDB(); updateUI();
+}
+
+function actionDownload(id, e) {
+    if (e) e.stopPropagation();
+    const sec = db.find(s => s.id === String(id));
+    if (!sec || !sec.points.length) return alert('Không có dữ liệu!');
+    const rows = sec.points.map((p,i) => ({ 'TT':i+1,'Tên vị trí':p.pointName,'Vĩ độ':p.lat,'Kinh độ':p.lng,'Cao độ (m)':p.elevation,'K/C điểm (m)':Math.round(p.distanceToPrev),'Tổng dài (m)':Math.round(p.totalDistance) }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'MatCat');
+    XLSX.writeFile(wb, `MatCat_${sec.name}.xlsx`);
+}
+
+function clearAllData() {
+    if (!db.length) return alert('Không có dữ liệu!');
+    if (!confirm('Xóa tất cả mặt cắt?')) return;
+    db = []; activeId = null;
+    localStorage.removeItem('topo_data');
+    setDrawMode(false);
+    renderSidebar(); updateUI();
+}
+
+// ==============================
+// XUẤT DXF
+// ==============================
+function generateDXF(points, Ex) {
+    const minEl  = Math.min(...points.map(p => p.elevation));
+    const base   = (minEl - 5) * Ex;
+    const th     = 2.5;
+    let dxf = '0\nSECTION\n2\nENTITIES\n';
+    for (let i = 0; i < points.length-1; i++) {
+        const [a, b] = [points[i], points[i+1]];
+        dxf += `0\nLINE\n8\nDia_Hinh\n62\n2\n10\n${a.totalDistance.toFixed(3)}\n20\n${(a.elevation*Ex).toFixed(3)}\n11\n${b.totalDistance.toFixed(3)}\n21\n${(b.elevation*Ex).toFixed(3)}\n`;
+    }
+    points.forEach(p => {
+        const x = p.totalDistance.toFixed(3), y = (p.elevation*Ex).toFixed(3);
+        dxf += `0\nLINE\n8\nLuoi_Chieu\n62\n4\n10\n${x}\n20\n${base}\n11\n${x}\n21\n${y}\n`;
+        dxf += `0\nTEXT\n8\nGhi_Chu\n62\n7\n10\n${x}\n20\n${base-th*1.5}\n40\n${th}\n1\n${p.pointName}\n`;
+        dxf += `0\nTEXT\n8\nGhi_Chu\n62\n7\n10\n${x}\n20\n${base-th*3}\n40\n${th*0.8}\n1\nL:${x}m\n`;
+        dxf += `0\nTEXT\n8\nGhi_Chu\n62\n3\n10\n${(+x+th*0.3).toFixed(3)}\n20\n${base+th}\n40\n${th}\n50\n90\n1\nH:${p.elevation.toFixed(2)}m\n`;
+    });
+    dxf += `0\nLINE\n8\nLuoi_Chieu\n62\n4\n10\n0\n20\n${base}\n11\n${points[points.length-1].totalDistance.toFixed(3)}\n21\n${base}\n`;
+    dxf += '0\nENDSEC\n0\nEOF\n';
+    return dxf;
+}
+
+function triggerDXF(sec) {
+    if (!sec || !sec.points.length) return alert('Không có dữ liệu mặt cắt để xuất!');
+    const r  = document.getElementById('scale-ratio').value;
+    const Ex = r === 'auto' ? 1 : parseFloat(r);
+    const bl = new Blob([generateDXF(sec.points, Ex)], { type:'text/plain' });
+    const a  = Object.assign(document.createElement('a'), { href: URL.createObjectURL(bl), download: `MatCat_${sec.name}.dxf` });
+    a.click(); URL.revokeObjectURL(a.href);
+}
+
+function actionExportDXF(id, e) { if (e) e.stopPropagation(); triggerDXF(db.find(s => s.id === String(id))); }
+function exportCurrentToCAD()   { if (!activeId) return alert('Vui lòng chọn tuyến!'); triggerDXF(db.find(s => s.id === activeId)); }
+
+// ==============================
+// ĐỌC FILE
+// ==============================
+function parseCoordsRow(row, idx) {
+    if (!row || row.length < 2) return null;
+    const h0 = String(row[0]).toLowerCase(), h1 = String(row[1]).toLowerCase();
+    if (h0.includes('tên') || h0.includes('vị trí') || h1.includes('lat') || h1.includes('vĩ')) return null;
+    let lat = parseFloat(row[1]), lng = parseFloat(row[2]);
+    if (!isNaN(lat) && !isNaN(lng)) {
+        let name = String(row[0]).trim();
+        if (!name || name === 'undefined' || name === 'null') name = 'Điểm ' + (idx+1);
+        let elev = !isNaN(parseFloat(row[3])) ? parseFloat(row[3]) : null;
+        if (lat > 70 && lng < 30) [lat,lng] = [lng,lat];
+        return { pointName:name, lat, lng, elevation:elev };
+    }
+    const la = parseFloat(row[0]), lo = parseFloat(row[1]);
+    if (!isNaN(la) && !isNaN(lo)) {
+        let elev = !isNaN(parseFloat(row[2])) ? parseFloat(row[2]) : null;
+        let flat = la, flng = lo;
+        if (flat > 70 && flng < 30) [flat,flng] = [flng,flat];
+        return { pointName:'Điểm '+(idx+1), lat:flat, lng:flng, elevation:elev };
+    }
+    return null;
+}
+
+async function handleFileUpload(event) {
+    const file = event.target.files[0]; if (!file) return;
+    const ext = file.name.split('.').pop().toLowerCase();
+    let raw = [];
+    try {
+        if      (ext==='csv')  raw = await parseCSV(file);
+        else if (ext==='xlsx') raw = await parseXLSX(file);
+        else if (ext==='kml')  raw = await parseKML(await file.text());
+        else if (ext==='kmz')  raw = await parseKMZ(file);
+        else return alert('Định dạng không hỗ trợ! Dùng: csv, xlsx, kml, kmz');
+        if (!raw.length) return alert('File không hợp lệ hoặc không có tọa độ!');
+        let pts = [], total = 0;
+        for (let i=0; i<raw.length; i++) {
+            let { pointName, lat, lng, elevation } = raw[i];
+            if (elevation === null || elevation === undefined) elevation = getMockElev(lat, lng);
+            const dist = i > 0 ? map.distance([raw[i-1].lat, raw[i-1].lng], [lat, lng]) : 0;
+            total += dist;
+            pts.push({ pointName, lat, lng, elevation: Math.round(elevation), distanceToPrev: dist, totalDistance: total });
+        }
+        const id = Date.now().toString();
+        db.push({ id, name: file.name.replace(/\.[^/.]+$/,''), createdAt: Date.now(), points: pts });
+        activeId = id; saveToDB(); updateUI();
+        map.fitBounds(L.latLngBounds(pts.map(p => [p.lat, p.lng])), {padding:[50,50]});
+    } catch(err) { alert('Lỗi đọc file: ' + err.message); }
+    event.target.value = '';
+}
+
+function parseCSV(file) {
+    return new Promise(res => {
+        const r = new FileReader(); let pts = [], idx = 0;
+        r.onload = e => { e.target.result.split(/\r?\n/).forEach(line => { if (!line.trim()) return; const c = parseCoordsRow(line.split(','), idx); if (c) { pts.push(c); idx++; } }); res(pts); };
+        r.readAsText(file);
+    });
+}
+function parseXLSX(file) {
+    return new Promise(res => {
+        const r = new FileReader(); let pts = [], idx = 0;
+        r.onload = e => { const wb = XLSX.read(new Uint8Array(e.target.result), {type:'array'}); XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header:1}).forEach(row => { const c = parseCoordsRow(row, idx); if (c) { pts.push(c); idx++; } }); res(pts); };
+        r.readAsArrayBuffer(file);
+    });
+}
+function parseKML(text) {
+    return new Promise(res => {
+        let pts = [], idx = 0;
+        const nodes = new DOMParser().parseFromString(text, 'text/xml').getElementsByTagName('coordinates');
+        for (let i=0; i<nodes.length; i++) {
+            nodes[i].textContent.trim().split(/\s+/).forEach(chunk => {
+                const p = chunk.split(',');
+                if (p.length>=2 && !isNaN(+p[1]) && !isNaN(+p[0]))
+                    { pts.push({ pointName:'Điểm '+(++idx), lat:+p[1], lng:+p[0], elevation:+p[2]||null }); }
+            });
+        }
+        res(pts);
+    });
+}
+function parseKMZ(file) {
+    return new Promise((res, rej) => {
+        JSZip.loadAsync(file)
+            .then(zip => { const k = Object.values(zip.files).find(f => f.name.toLowerCase().endsWith('.kml')); if (!k) throw new Error('Không tìm thấy file KML trong KMZ'); return k.async('string'); })
+            .then(t => res(parseKML(t))).catch(rej);
+    });
+}
+
+// Khởi chạy
+renderSidebar(); updateUI();
+</script>
+</body>
+</html>

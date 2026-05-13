@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tạo mã QR</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qr-code-styling@1.6.0/lib/qr-code-styling.js"></script>
+  <style>
+    :root { --main: #154397; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; }
+    #qr-code canvas, #qr-code svg { width: 100% !important; height: 100% !important; }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen flex flex-col items-center p-4 md:p-6">
+
+  <div class="max-w-4xl w-full">
+    <h1 class="text-2xl md:text-3xl font-bold text-center mb-6" style="color:var(--main)">QR Code Generator</h1>
+
+    <div class="bg-white shadow-md rounded-2xl p-5 md:p-6">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+        <!-- Left: Preview -->
+        <div class="flex flex-col items-center gap-3">
+          <div id="qrWrapper" class="bg-white p-3 rounded-xl border shadow-inner">
+            <div id="qr-code" style="width:240px;height:240px;"></div>
+          </div>
+          <div id="qrCaption" class="text-base font-semibold text-gray-700">SCAN ME</div>
+          <div class="flex gap-3">
+            <button id="downloadBtn"
+              class="px-4 py-2 text-white rounded-lg font-medium transition hover:opacity-90"
+              style="background:var(--main)">
+              ⬇ Tải QR
+            </button>
+            <button id="updateBtn"
+              class="px-4 py-2 bg-gray-100 border rounded-lg font-medium hover:bg-gray-200 transition text-gray-700">
+              🔄 Cập nhật
+            </button>
+          </div>
+        </div>
+
+        <!-- Right: Options -->
+        <div class="space-y-3">
+          <div>
+            <label class="block mb-1 font-semibold text-sm text-gray-700">Loại QR</label>
+            <select id="qrType" class="w-full p-2 border rounded-lg text-sm">
+              <option value="link">🔗 Link (URL)</option>
+              <option value="wifi">📶 WiFi</option>
+              <option value="text">📝 Văn bản</option>
+              <option value="phone">📞 Số điện thoại</option>
+              <option value="email">✉️ Email</option>
+            </select>
+          </div>
+
+          <!-- Dynamic input area -->
+          <div id="qrInputs">
+            <label class="block mb-1 font-semibold text-sm text-gray-700">URL</label>
+            <input id="qrText" type="text" placeholder="https://..." value="https://example.com"
+              class="w-full p-2 border rounded-lg text-sm" />
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block mb-1 font-semibold text-sm text-gray-700">Màu QR</label>
+              <input id="qrColor" type="color" value="#154397" class="w-full h-10 rounded cursor-pointer border p-0.5" />
+            </div>
+            <div>
+              <label class="block mb-1 font-semibold text-sm text-gray-700">Màu nền</label>
+              <input id="bgColor" type="color" value="#ffffff" class="w-full h-10 rounded cursor-pointer border p-0.5" />
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block mb-1 font-semibold text-sm text-gray-700">Kiểu chấm</label>
+              <select id="dotStyle" class="w-full p-2 border rounded-lg text-sm">
+                <option value="square">Vuông</option>
+                <option value="dots">Chấm tròn</option>
+                <option value="rounded">Bo góc</option>
+                <option value="classy">Classy</option>
+                <option value="classy-rounded">Classy tròn</option>
+              </select>
+            </div>
+            <div>
+              <label class="block mb-1 font-semibold text-sm text-gray-700">Định dạng tải</label>
+              <select id="fileFormat" class="w-full p-2 border rounded-lg text-sm">
+                <option value="png">PNG</option>
+                <option value="svg">SVG</option>
+                <option value="jpeg">JPEG</option>
+                <option value="webp">WEBP</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label class="block mb-1 font-semibold text-sm text-gray-700">Kích thước (px)</label>
+            <input id="qrSize" type="range" min="100" max="600" value="300"
+              class="w-full" oninput="document.getElementById('sizeVal').textContent=this.value" />
+            <div class="text-xs text-gray-500 mt-0.5">Kích thước: <span id="sizeVal">300</span>px</div>
+          </div>
+
+          <div>
+            <label class="block mb-1 font-semibold text-sm text-gray-700">Logo (tuỳ chọn)</label>
+            <input id="logoUpload" type="file" accept="image/*" class="w-full text-sm" />
+          </div>
+
+          <div class="flex gap-2 items-center">
+            <input id="showCaption" type="checkbox" checked class="w-4 h-4" />
+            <label for="showCaption" class="text-sm font-semibold text-gray-700">Hiển thị chú thích</label>
+          </div>
+
+          <input id="captionText" type="text" placeholder="SCAN ME" value="SCAN ME"
+            class="w-full p-2 border rounded-lg text-sm" />
+        </div>
+      </div>
+    </div>
+
+    <p class="text-center text-xs text-gray-400 mt-4">Xử lý hoàn toàn trên trình duyệt — không gửi dữ liệu lên máy chủ.</p>
+  </div>
+
+<script>
+// --- State ---
+let logoDataUrl = null;
+let qrCode = null;
+
+// --- Build QR data string based on type ---
+function buildQRData() {
+  const type = document.getElementById('qrType').value;
+  if (type === 'link' || type === 'text') {
+    return document.getElementById('qrText').value.trim() || 'https://example.com';
+  }
+  if (type === 'phone') {
+    return 'tel:' + (document.getElementById('qrText').value.trim() || '0901234567');
+  }
+  if (type === 'email') {
+    const email = document.getElementById('emailTo').value.trim();
+    const subject = document.getElementById('emailSubject').value.trim();
+    const body = document.getElementById('emailBody').value.trim();
+    let str = 'mailto:' + email;
+    const params = [];
+    if (subject) params.push('subject=' + encodeURIComponent(subject));
+    if (body) params.push('body=' + encodeURIComponent(body));
+    if (params.length) str += '?' + params.join('&');
+    return str;
+  }
+  if (type === 'wifi') {
+    const ssid = document.getElementById('wifiSSID').value.trim();
+    const pass = document.getElementById('wifiPass').value.trim();
+    const auth = document.getElementById('wifiAuth').value;
+    const hidden = document.getElementById('wifiHidden').checked ? 'true' : 'false';
+    return `WIFI:T:${auth};S:${ssid};P:${pass};H:${hidden};;`;
+  }
+  return '';
+}
+
+// --- Render dynamic input form ---
+function renderInputs() {
+  const type = document.getElementById('qrType').value;
+  const container = document.getElementById('qrInputs');
+  if (type === 'link') {
+    container.innerHTML = `
+      <label class="block mb-1 font-semibold text-sm text-gray-700">URL</label>
+      <input id="qrText" type="url" placeholder="https://..." value="https://example.com"
+        class="w-full p-2 border rounded-lg text-sm" />`;
+  } else if (type === 'text') {
+    container.innerHTML = `
+      <label class="block mb-1 font-semibold text-sm text-gray-700">Văn bản</label>
+      <textarea id="qrText" rows="3" placeholder="Nhập văn bản..."
+        class="w-full p-2 border rounded-lg text-sm resize-none"></textarea>`;
+  } else if (type === 'phone') {
+    container.innerHTML = `
+      <label class="block mb-1 font-semibold text-sm text-gray-700">Số điện thoại</label>
+      <input id="qrText" type="tel" placeholder="0901234567"
+        class="w-full p-2 border rounded-lg text-sm" />`;
+  } else if (type === 'email') {
+    container.innerHTML = `
+      <label class="block mb-1 font-semibold text-sm text-gray-700">Địa chỉ email</label>
+      <input id="emailTo" type="email" placeholder="name@example.com"
+        class="w-full p-2 border rounded-lg text-sm mb-2" />
+      <label class="block mb-1 font-semibold text-sm text-gray-700">Tiêu đề (tuỳ chọn)</label>
+      <input id="emailSubject" type="text" placeholder="Chủ đề email..."
+        class="w-full p-2 border rounded-lg text-sm mb-2" />
+      <label class="block mb-1 font-semibold text-sm text-gray-700">Nội dung (tuỳ chọn)</label>
+      <textarea id="emailBody" rows="2" placeholder="Nội dung email..."
+        class="w-full p-2 border rounded-lg text-sm resize-none"></textarea>`;
+  } else if (type === 'wifi') {
+    container.innerHTML = `
+      <label class="block mb-1 font-semibold text-sm text-gray-700">Tên WiFi (SSID)</label>
+      <input id="wifiSSID" type="text" placeholder="MyWifi"
+        class="w-full p-2 border rounded-lg text-sm mb-2" />
+      <label class="block mb-1 font-semibold text-sm text-gray-700">Mật khẩu</label>
+      <input id="wifiPass" type="text" placeholder="Password..."
+        class="w-full p-2 border rounded-lg text-sm mb-2" />
+      <div class="flex gap-3">
+        <div class="flex-1">
+          <label class="block mb-1 font-semibold text-sm text-gray-700">Bảo mật</label>
+          <select id="wifiAuth" class="w-full p-2 border rounded-lg text-sm">
+            <option value="WPA">WPA/WPA2</option>
+            <option value="WEP">WEP</option>
+            <option value="nopass">Không có</option>
+          </select>
+        </div>
+        <div class="flex items-end pb-2 gap-2">
+          <input id="wifiHidden" type="checkbox" class="w-4 h-4" />
+          <label for="wifiHidden" class="text-sm text-gray-700">Ẩn SSID</label>
+        </div>
+      </div>`;
+  }
+}
+
+// --- Create/Update QR ---
+function buildQR() {
+  const data = buildQRData();
+  const color = document.getElementById('qrColor').value;
+  const bg = document.getElementById('bgColor').value;
+  const dotType = document.getElementById('dotStyle').value;
+  const size = parseInt(document.getElementById('qrSize').value) || 300;
+
+  const options = {
+    width: size,
+    height: size,
+    type: 'canvas',
+    data: data,
+    dotsOptions: { color: color, type: dotType },
+    cornersSquareOptions: { color: color },
+    cornersDotOptions: { color: color },
+    backgroundOptions: { color: bg },
+    imageOptions: { crossOrigin: 'anonymous', margin: 8, imageSize: 0.3 },
+    qrOptions: { errorCorrectionLevel: 'H' },
+  };
+  if (logoDataUrl) options.image = logoDataUrl;
+
+  const container = document.getElementById('qr-code');
+  container.innerHTML = '';
+
+  if (qrCode) {
+    qrCode.update(options);
+    qrCode.append(container);
+  } else {
+    qrCode = new QRCodeStyling(options);
+    qrCode.append(container);
+  }
+
+  // Caption
+  const caption = document.getElementById('qrCaption');
+  const showCap = document.getElementById('showCaption').checked;
+  const capText = document.getElementById('captionText').value || 'SCAN ME';
+  caption.textContent = capText;
+  caption.style.display = showCap ? 'block' : 'none';
+}
+
+// --- Download ---
+document.getElementById('downloadBtn').addEventListener('click', () => {
+  if (!qrCode) return;
+  const ext = document.getElementById('fileFormat').value;
+  qrCode.download({ name: 'qrcode', extension: ext });
+});
+
+// --- Update button ---
+document.getElementById('updateBtn').addEventListener('click', buildQR);
+
+// --- Type change ---
+document.getElementById('qrType').addEventListener('change', () => {
+  renderInputs();
+  buildQR();
+});
+
+// --- Logo upload ---
+document.getElementById('logoUpload').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) { logoDataUrl = null; buildQR(); return; }
+  const reader = new FileReader();
+  reader.onload = ev => { logoDataUrl = ev.target.result; buildQR(); };
+  reader.readAsDataURL(file);
+});
+
+// --- Init ---
+renderInputs();
+buildQR();
+</script>
+</body>
+</html>

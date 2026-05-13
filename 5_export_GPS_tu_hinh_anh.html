@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GeoVision Pro - Hệ Thống Trích Xuất Dữ Liệu Không Gian</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/exif-js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+
+    <style>
+        :root {
+            --primary: #0f172a; /* Slate 900 */
+            --secondary: #1e293b; /* Slate 800 */
+            --accent: #3b82f6; /* Blue 500 */
+            --accent-hover: #2563eb;
+            --success: #10b981; /* Emerald 500 */
+            --danger: #ef4444; /* Red 500 */
+            --text-light: #f8fafc;
+            --text-muted: #94a3b8;
+            --bg-body: #0b1120;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg-body);
+            color: var(--text-light);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        .header {
+            padding: 20px 30px;
+            background: var(--primary);
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .header p { color: var(--text-muted); font-size: 0.9rem; margin-top: 5px; }
+
+        .container {
+            display: flex;
+            flex: 1;
+            padding: 20px;
+            gap: 20px;
+            overflow: hidden;
+        }
+
+        /* Khung Trái - Upload & Export */
+        .panel-left {
+            width: 350px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .upload-box {
+            background: rgba(59, 130, 246, 0.05);
+            border: 2px dashed var(--accent);
+            border-radius: 12px;
+            padding: 40px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .upload-box:hover {
+            background: rgba(59, 130, 246, 0.1);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(59, 130, 246, 0.15);
+        }
+
+        .upload-box i { font-size: 3rem; color: var(--accent); }
+        .upload-box span { font-weight: 500; font-size: 1.1rem; }
+        .upload-box p { font-size: 0.85rem; color: var(--text-muted); }
+
+        .export-panel {
+            background: var(--secondary);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .export-panel h3 { margin-bottom: 15px; font-size: 1rem; border-bottom: 1px solid #334155; padding-bottom: 10px; }
+
+        .action-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        button {
+            padding: 10px 15px;
+            background: var(--secondary);
+            color: white;
+            border: 1px solid #334155;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-size: 0.85rem;
+        }
+
+        button:hover { background: var(--accent); border-color: var(--accent); transform: translateY(-1px); }
+        button i { font-size: 1rem; }
+        
+        .btn-clear { background: rgba(239, 68, 68, 0.1); color: var(--danger); border-color: rgba(239, 68, 68, 0.2); grid-column: span 2; margin-top: 5px; }
+        .btn-clear:hover { background: var(--danger); color: white; border-color: var(--danger); }
+
+        /* Khung Phải - Bảng Dữ Liệu */
+        .panel-right {
+            flex: 1;
+            background: var(--secondary);
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.05);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .table-header { padding: 15px 20px; background: rgba(0,0,0,0.2); display: flex; justify-content: space-between; align-items: center;}
+        .table-header h2 { font-size: 1.1rem; color: var(--success); }
+        .table-header .stats { font-size: 0.85rem; background: var(--primary); padding: 5px 12px; border-radius: 20px;}
+
+        .table-container { flex: 1; overflow-y: auto; padding: 0 20px 20px 20px; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; text-align: left; }
+        th, td { padding: 12px 15px; border-bottom: 1px solid #334155; }
+        th { background: var(--primary); position: sticky; top: 0; font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; }
+        td { font-size: 0.9rem; }
+        tr:hover td { background: rgba(255,255,255,0.02); }
+
+        .error-list { margin-top: 20px; border-top: 1px dashed #334155; padding-top: 15px;}
+        .error-list h3 { color: var(--danger); font-size: 1rem; margin-bottom: 10px; }
+        .error-list ul { list-style: none; }
+        .error-list li { background: rgba(239, 68, 68, 0.05); padding: 8px 12px; border-radius: 4px; margin-bottom: 5px; font-size: 0.85rem; border-left: 3px solid var(--danger); }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: var(--primary); }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+    </style>
+</head>
+
+<body>
+
+<div class="header">
+    <div>
+        <h1><i class="fa-solid fa-satellite-dish"></i> GeoVision Pro</h1>
+        <p>Hệ thống trích xuất Metadata Không gian (EXIF GPS) từ Hình ảnh</p>
+    </div>
+</div>
+
+<div class="container">
+    <div class="panel-left">
+        <div class="upload-box" id="dropZone">
+            <i class="fa-solid fa-cloud-arrow-up"></i>
+            <span>Kéo & Thả Thư Mục/Ảnh</span>
+            <p>Hoặc click để chọn file từ máy tính</p>
+            <input type="file" id="fileInput" multiple accept="image/jpeg, image/png, image/tiff" hidden>
+        </div>
+
+        <div class="export-panel">
+            <h3><i class="fa-solid fa-download"></i> Xuất Dữ Liệu</h3>
+            <div class="action-grid">
+                <button onclick="exportCSV()"><i class="fa-solid fa-file-csv"></i> CSV</button>
+                <button onclick="exportXLSX()"><i class="fa-solid fa-file-excel"></i> XLSX</button>
+                <button onclick="exportGeoJSON()"><i class="fa-solid fa-code"></i> GeoJSON</button>
+                <button onclick="exportKML()"><i class="fa-solid fa-earth-americas"></i> KML</button>
+                <button onclick="exportKMZ()"><i class="fa-solid fa-file-zipper"></i> KMZ</button>
+                <button onclick="exportGPX()"><i class="fa-solid fa-route"></i> GPX</button>
+                <button class="btn-clear" onclick="clearAll()"><i class="fa-solid fa-trash-can"></i> Xóa Dữ Liệu Bộ Nhớ</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="panel-right">
+        <div class="table-header">
+            <h2><i class="fa-solid fa-check-circle"></i> Điểm Có Tọa Độ (WGS84)</h2>
+            <div class="stats">Tổng: <strong id="validCount" style="color: var(--success);">0</strong> | Lỗi: <strong id="invalidCount" style="color: var(--danger);">0</strong></div>
+        </div>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Tên File</th>
+                        <th>Vĩ độ (Lat)</th>
+                        <th>Kinh độ (Lng)</th>
+                        <th>Độ cao (m)</th>
+                    </tr>
+                </thead>
+                <tbody id="validBody"></tbody>
+            </table>
+
+            <div class="error-list" id="errorContainer" style="display: none;">
+                <h3><i class="fa-solid fa-triangle-exclamation"></i> Không Tìm Thấy Metadata GPS</h3>
+                <ul id="invalidList"></ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ===== BIẾN TOÀN CỤC & DOM =====
+    const dropZone = document.getElementById("dropZone");
+    const fileInput = document.getElementById("fileInput");
+    const validBody = document.getElementById("validBody");
+    const invalidList = document.getElementById("invalidList");
+    const errorContainer = document.getElementById("errorContainer");
+    
+    let extractedData = []; // Lưu trữ mảng object chuẩn để xuất file dễ dàng
+    let errorFiles = 0;
+
+    // ===== SỰ KIỆN KÉO THẢ =====
+    dropZone.onclick = () => fileInput.click();
+    dropZone.ondragover = e => { e.preventDefault(); dropZone.style.borderColor = "#10b981"; };
+    dropZone.ondragleave = e => { dropZone.style.borderColor = "#3b82f6"; };
+    dropZone.ondrop = e => {
+        e.preventDefault();
+        dropZone.style.borderColor = "#3b82f6";
+        handleFiles(e.dataTransfer.files);
+    };
+    fileInput.onchange = () => handleFiles(fileInput.files);
+
+    // ===== TRÍCH XUẤT EXIF =====
+    function handleFiles(files) {
+        for (let file of files) {
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const img = new Image();
+                img.src = e.target.result;
+
+                img.onload = function () {
+                    EXIF.getData(img, function () {
+                        const lat = EXIF.getTag(this, "GPSLatitude");
+                        const lon = EXIF.getTag(this, "GPSLongitude");
+                        const latRef = EXIF.getTag(this, "GPSLatitudeRef");
+                        const lonRef = EXIF.getTag(this, "GPSLongitudeRef");
+                        const alt = EXIF.getTag(this, "GPSAltitude");
+                        const altRef = EXIF.getTag(this, "GPSAltitudeRef"); // 0 = Sea level, 1 = Below sea level
+
+                        if (lat && lon) {
+                            let latDD = convertToDD(lat, latRef);
+                            let lonDD = convertToDD(lon, lonRef);
+                            let altValue = parseAltitude(alt, altRef);
+                            
+                            let dataPoint = {
+                                file: file.name,
+                                lat: latDD,
+                                lng: lonDD,
+                                alt: altValue
+                            };
+                            
+                            extractedData.push(dataPoint);
+                            renderValidRow(dataPoint);
+                        } else {
+                            renderInvalidRow(file.name);
+                        }
+                        updateStats();
+                    });
+                };
+            };
+            reader.readAsDataURL(file);
+        }
+        fileInput.value = ""; // Reset input
+    }
+
+    // ===== HÀM CHUYỂN ĐỔI CHUẨN =====
+    // 1. Độ Phút Giây sang Độ Thập Phân (WGS84)
+    function convertToDD(dms, ref) {
+        if (!dms || dms.length < 3) return 0;
+        let deg = dms[0].numerator / dms[0].denominator;
+        let min = dms[1].numerator / dms[1].denominator;
+        let sec = dms[2].numerator / dms[2].denominator;
+
+        let dd = deg + (min / 60) + (sec / 3600);
+        if (ref === "S" || ref === "W") dd *= -1;
+        return Number(dd.toFixed(7));
+    }
+
+    // 2. Xử lý Độ Cao chuẩn xác
+    function parseAltitude(alt, ref) {
+        if (alt === undefined || alt === null) return 0; // Mặc định 0 nếu không có
+        let val = 0;
+        if (typeof alt === 'number') {
+            val = alt;
+        } else if (alt.numerator !== undefined) {
+            val = alt.numerator / alt.denominator;
+        }
+        if (ref == 1) val = -val; // Dưới mực nước biển
+        return Number(val.toFixed(2));
+    }
+
+    // ===== HIỂN THỊ DỮ LIỆU =====
+    function renderValidRow(data) {
+        const row = validBody.insertRow();
+        row.innerHTML = `
+            <td><i class="fa-regular fa-image" style="color:var(--accent); margin-right:8px;"></i> ${data.file}</td>
+            <td style="color: #cbd5e1;">${data.lat}</td>
+            <td style="color: #cbd5e1;">${data.lng}</td>
+            <td style="color: #cbd5e1;">${data.alt > 0 ? data.alt : "N/A"}</td>
+        `;
+    }
+
+    function renderInvalidRow(name) {
+        errorFiles++;
+        errorContainer.style.display = "block";
+        const li = document.createElement("li");
+        li.innerHTML = `<i class="fa-solid fa-xmark"></i> ${name}`;
+        invalidList.appendChild(li);
+    }
+
+    function updateStats() {
+        document.getElementById("validCount").innerText = extractedData.length;
+        document.getElementById("invalidCount").innerText = errorFiles;
+    }
+
+    function clearAll() {
+        if(!confirm("Hủy toàn bộ dữ liệu hiện tại?")) return;
+        extractedData = [];
+        errorFiles = 0;
+        validBody.innerHTML = "";
+        invalidList.innerHTML = "";
+        errorContainer.style.display = "none";
+        updateStats();
+    }
+
+    // ===== XUẤT FILE CHUẨN =====
+    function checkData() {
+        if (extractedData.length === 0) { alert("Chưa có dữ liệu hợp lệ để xuất!"); return false; }
+        return true;
+    }
+
+    function downloadFile(content, fileName, mimeType) {
+        const blob = new Blob([content], { type: mimeType });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = fileName;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    // 1. CSV
+    function exportCSV() {
+        if (!checkData()) return;
+        let csv = "\uFEFFFileName,Latitude,Longitude,Altitude\n";
+        extractedData.forEach(d => {
+            csv += `"${d.file}",${d.lat},${d.lng},${d.alt}\n`;
+        });
+        downloadFile(csv, "GeoVision_WGS84.csv", "text/csv;charset=utf-8;");
+    }
+
+    // 2. XLSX
+    function exportXLSX() {
+        if (!checkData()) return;
+        let data = [["Tên File", "Vĩ độ (Lat)", "Kinh độ (Lng)", "Độ cao (m)"]];
+        extractedData.forEach(d => { data.push([d.file, d.lat, d.lng, d.alt]); });
+        
+        const ws = XLSX.utils.aoa_to_sheet(data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "GPS Data");
+        XLSX.writeFile(wb, "GeoVision_WGS84.xlsx");
+    }
+
+    // 3. KML String Generator
+    function generateKML() {
+        let kml = `<?xml version="1.0" encoding="UTF-8"?>\n<kml xmlns="http://www.opengis.net/kml/2.2">\n<Document>\n<name>GeoVision Extract</name>\n`;
+        extractedData.forEach(d => {
+            kml += `  <Placemark>\n    <name>${d.file}</name>\n    <Point>\n      <coordinates>${d.lng},${d.lat},${d.alt}</coordinates>\n    </Point>\n  </Placemark>\n`;
+        });
+        kml += `</Document>\n</kml>`;
+        return kml;
+    }
+
+    // 4. KML
+    function exportKML() {
+        if (!checkData()) return;
+        downloadFile(generateKML(), "GeoVision_WGS84.kml", "application/vnd.google-earth.kml+xml");
+    }
+
+    // 5. KMZ
+    async function exportKMZ() {
+        if (!checkData()) return;
+        let zip = new JSZip();
+        zip.file("doc.kml", generateKML());
+        let content = await zip.generateAsync({type:"blob"});
+        let url = URL.createObjectURL(content);
+        let link = document.createElement("a");
+        link.href = url; link.download = "GeoVision_WGS84.kmz"; link.click();
+    }
+
+    // 6. GeoJSON
+    function exportGeoJSON() {
+        if (!checkData()) return;
+        let geojson = {
+            "type": "FeatureCollection",
+            "features": extractedData.map(d => ({
+                "type": "Feature",
+                "properties": { "name": d.file, "altitude": d.alt },
+                "geometry": { "type": "Point", "coordinates": [d.lng, d.lat, d.alt] }
+            }))
+        };
+        downloadFile(JSON.stringify(geojson, null, 2), "GeoVision_WGS84.geojson", "application/json");
+    }
+
+    // 7. GPX
+    function exportGPX() {
+        if (!checkData()) return;
+        let gpx = `<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="GeoVision Pro" xmlns="http://www.topografix.com/GPX/1/1">\n`;
+        extractedData.forEach(d => {
+            gpx += `  <wpt lat="${d.lat}" lon="${d.lng}">\n    <ele>${d.alt}</ele>\n    <name>${d.file}</name>\n  </wpt>\n`;
+        });
+        gpx += `</gpx>`;
+        downloadFile(gpx, "GeoVision_WGS84.gpx", "application/gpx+xml");
+    }
+</script>
+
+</body>
+</html>
